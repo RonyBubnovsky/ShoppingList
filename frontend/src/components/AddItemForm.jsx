@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { categoriesApi, itemsApi } from '../services/api';
+import { itemsApi } from '../services/api';
+import { CATEGORIES } from '../constants/categories';
 import { FaPlus } from 'react-icons/fa';
 
 // Common unit types for shopping items with Hebrew translations
@@ -46,31 +47,22 @@ function AddItemForm({ onItemAdded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load categories when component mounts
+  // Initialize categories when component mounts
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const fetchedCategories = await categoriesApi.getCategories();
-        setCategories(fetchedCategories);
-        
-        // Create translated categories array
-        const translated = fetchedCategories.map(cat => ({
-          original: cat,
-          translated: CATEGORY_TRANSLATIONS[cat] || cat
-        }));
-        setTranslatedCategories(translated);
-        
-        // Set default category
-        if (fetchedCategories.length > 0 && !formData.category) {
-          setFormData(prev => ({ ...prev, category: fetchedCategories[0] }));
-        }
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
-        setError('טעינת הקטגוריות נכשלה. נא לנסות שוב.');
-      }
-    };
-
-    fetchCategories();
+    // No need to fetch - using local constant
+    setCategories(CATEGORIES);
+    
+    // Create translated categories array
+    const translated = CATEGORIES.map(cat => ({
+      original: cat,
+      translated: CATEGORY_TRANSLATIONS[cat] || cat
+    }));
+    setTranslatedCategories(translated);
+    
+    // Set default category
+    if (CATEGORIES.length > 0 && !formData.category) {
+      setFormData(prev => ({ ...prev, category: CATEGORIES[0] }));
+    }
   }, []);
 
   // Handle input changes

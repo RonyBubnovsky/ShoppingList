@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { CATEGORIES } from '../constants/categories';
 
 // Base API URL - make sure this matches your backend
 const API_URL = 'http://localhost:5000/api';
@@ -16,6 +17,12 @@ export const itemsApi = {
   // Get all shopping list items
   getAllItems: async () => {
     const response = await api.get('/items');
+    return response.data;
+  },
+  
+  // Get item statistics
+  getItemStats: async () => {
+    const response = await api.get('/items/stats');
     return response.data;
   },
   
@@ -50,12 +57,11 @@ export const itemsApi = {
   },
 };
 
-// API methods for categories
+// Categories now come from local constants
 export const categoriesApi = {
   // Get all predefined categories
   getCategories: async () => {
-    const response = await api.get('/categories');
-    return response.data;
+    return CATEGORIES;
   },
 };
 

@@ -5,7 +5,9 @@ import {
   FaTrash, 
   FaCheck, 
   FaUndo,
-  FaShoppingBasket
+  FaShoppingBasket,
+  FaListAlt,
+  FaCheckCircle
 } from 'react-icons/fa';
 
 function ShoppingList() {
@@ -13,11 +15,28 @@ function ShoppingList() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stats, setStats] = useState({
+    total: 0,
+    purchased: 0,
+    unpurchased: 0
+  });
 
   // Fetch all items when component mounts
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Calculate stats whenever items change
+  useEffect(() => {
+    const purchased = items.filter(item => item.purchased).length;
+    const total = items.length;
+    
+    setStats({
+      total,
+      purchased,
+      unpurchased: total - purchased
+    });
+  }, [items]);
 
   // Function to fetch items from API
   const fetchItems = async () => {
@@ -25,6 +44,22 @@ function ShoppingList() {
       setIsLoading(true);
       const data = await itemsApi.getAllItems();
       setItems(data);
+      
+      // Try to get stats from the server (more efficient for large lists)
+      try {
+        const statsData = await itemsApi.getItemStats();
+        setStats(statsData);
+      } catch (statsErr) {
+        // If server stats fail, calculate locally
+        console.warn('Could not fetch stats from server, calculating locally:', statsErr);
+        const purchased = data.filter(item => item.purchased).length;
+        setStats({
+          total: data.length,
+          purchased,
+          unpurchased: data.length - purchased
+        });
+      }
+      
       setError(null);
     } catch (err) {
       console.error('Failed to fetch items:', err);
@@ -149,6 +184,35 @@ function ShoppingList() {
     );
   };
 
+  // Render shopping statistics
+  const renderShoppingStats = () => {
+    return (
+      <div className="shopping-stats">
+        <div className="stat-item">
+          <FaListAlt className="stat-icon" />
+          <div className="stat-content">
+            <span className="stat-label">סה"כ פריטים:</span>
+            <span className="stat-value">{stats.total}</span>
+          </div>
+        </div>
+        <div className="stat-item">
+          <FaCheckCircle className="stat-icon purchased" />
+          <div className="stat-content">
+            <span className="stat-label">נקנו:</span>
+            <span className="stat-value">{stats.purchased}</span>
+          </div>
+        </div>
+        <div className="stat-item">
+          <FaShoppingBasket className="stat-icon unpurchased" />
+          <div className="stat-content">
+            <span className="stat-label">נותרו לקנות:</span>
+            <span className="stat-value">{stats.unpurchased}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="shopping-list" dir="rtl">
       <div className="shopping-list-header">
@@ -160,6 +224,8 @@ function ShoppingList() {
           }
         </button>
       </div>
+
+      {!isLoading && items.length > 0 && renderShoppingStats()}
 
       {error && <div className="error-message">{error}</div>}
 
