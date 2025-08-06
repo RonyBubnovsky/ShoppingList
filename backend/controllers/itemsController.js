@@ -63,12 +63,36 @@ const addItem = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
+    const parsedQuantity = parseInt(quantity);
+    
     // Try with Prisma first
     try {
+      // Check if same item already exists (same name, unit and category)
+      const existingItem = await prisma.item.findFirst({
+        where: {
+          name: name,
+          unit: unit,
+          category: category,
+        }
+      });
+      
+      // If item exists, update quantity instead of creating new one
+      if (existingItem) {
+        const updatedItem = await prisma.item.update({
+          where: { id: existingItem.id },
+          data: {
+            quantity: existingItem.quantity + parsedQuantity
+          }
+        });
+        
+        return res.status(200).json(updatedItem);
+      }
+      
+      // Item doesn't exist, create new one
       const newItem = await prisma.item.create({
         data: {
           name,
-          quantity: parseInt(quantity),
+          quantity: parsedQuantity,
           unit,
           category,
           purchased: false,
@@ -80,32 +104,71 @@ const addItem = async (req, res) => {
       console.error('Prisma error, falling back to SQLite:', prismaError);
       
       // Fallback to direct SQLite
-      const result = await new Promise((resolve, reject) => {
-        db.run(
-          `INSERT INTO Item (name, quantity, unit, category, purchased) 
-           VALUES (?, ?, ?, ?, ?)`,
-          [name, parseInt(quantity), unit, category, false],
-          function(err) {
-            if (err) {
-              reject(err);
-            } else {
-              db.get(`SELECT * FROM Item WHERE id = ?`, [this.lastID], (err, row) => {
+      try {
+        // Check if same item already exists
+        const existingItems = await runQuery(
+          `SELECT * FROM Item WHERE name = ? AND unit = ? AND category = ?`,
+          [name, unit, category]
+        );
+        
+        if (existingItems && existingItems.length > 0) {
+          // Item exists, update quantity
+          const existingItem = existingItems[0];
+          const newQuantity = existingItem.quantity + parsedQuantity;
+          
+          await new Promise((resolve, reject) => {
+            db.run(
+              `UPDATE Item SET quantity = ? WHERE id = ?`,
+              [newQuantity, existingItem.id],
+              function(err) {
                 if (err) {
                   reject(err);
                 } else {
-                  resolve(row);
+                  resolve();
                 }
-              });
-            }
-          }
-        );
-      });
-      
-      return res.status(201).json(result);
+              }
+            );
+          });
+          
+          // Get updated item
+          const updatedItems = await runQuery(
+            `SELECT * FROM Item WHERE id = ?`,
+            [existingItem.id]
+          );
+          
+          return res.status(200).json(updatedItems[0]);
+        } else {
+          // Item doesn't exist, create new one
+          const result = await new Promise((resolve, reject) => {
+            db.run(
+              `INSERT INTO Item (name, quantity, unit, category, purchased) 
+               VALUES (?, ?, ?, ?, ?)`,
+              [name, parsedQuantity, unit, category, false],
+              function(err) {
+                if (err) {
+                  reject(err);
+                } else {
+                  db.get(`SELECT * FROM Item WHERE id = ?`, [this.lastID], (err, row) => {
+                    if (err) {
+                      reject(err);
+                    } else {
+                      resolve(row);
+                    }
+                  });
+                }
+              }
+            );
+          });
+          
+          return res.status(201).json(result);
+        }
+      } catch (sqliteError) {
+        throw sqliteError;
+      }
     }
   } catch (error) {
-    console.error('Error creating item:', error);
-    res.status(500).json({ error: 'Failed to create item' });
+    console.error('Error creating/updating item:', error);
+    res.status(500).json({ error: 'Failed to create or update item' });
   }
 };
 

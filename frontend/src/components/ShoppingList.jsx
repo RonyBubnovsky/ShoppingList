@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import ShoppingItem from './ShoppingItem';
 import { itemsApi } from '../services/api';
+import { CATEGORIES } from '../constants/categories';
 import { 
   FaTrash, 
   FaCheck, 
   FaUndo,
   FaShoppingBasket,
   FaListAlt,
-  FaCheckCircle
+  FaCheckCircle,
+  FaFilter,
+  FaSearch
 } from 'react-icons/fa';
 
 function ShoppingList() {
   const [items, setItems] = useState([]);
+  const [filteredItems, setFilteredItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,23 +24,49 @@ function ShoppingList() {
     purchased: 0,
     unpurchased: 0
   });
+  const [filters, setFilters] = useState({
+    nameFilter: '',
+    categoryFilter: ''
+  });
 
   // Fetch all items when component mounts
   useEffect(() => {
     fetchItems();
   }, []);
-
-  // Calculate stats whenever items change
+  
+  // Apply filters to items and update filtered items
   useEffect(() => {
-    const purchased = items.filter(item => item.purchased).length;
-    const total = items.length;
+    if (!items.length) return;
+    
+    const { nameFilter, categoryFilter } = filters;
+    let result = [...items];
+    
+    // Filter by name (case insensitive)
+    if (nameFilter) {
+      result = result.filter(item => 
+        item.name.toLowerCase().includes(nameFilter.toLowerCase())
+      );
+    }
+    
+    // Filter by category
+    if (categoryFilter) {
+      result = result.filter(item => item.category === categoryFilter);
+    }
+    
+    setFilteredItems(result);
+  }, [items, filters]);
+
+  // Calculate stats whenever filtered items change
+  useEffect(() => {
+    const purchased = filteredItems.filter(item => item.purchased).length;
+    const total = filteredItems.length;
     
     setStats({
       total,
       purchased,
       unpurchased: total - purchased
     });
-  }, [items]);
+  }, [filteredItems]);
 
   // Function to fetch items from API
   const fetchItems = async () => {
@@ -44,6 +74,7 @@ function ShoppingList() {
       setIsLoading(true);
       const data = await itemsApi.getAllItems();
       setItems(data);
+      setFilteredItems(data);
       
       // Try to get stats from the server (more efficient for large lists)
       try {
@@ -67,6 +98,23 @@ function ShoppingList() {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  // Handle filter changes
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  // Reset all filters
+  const resetFilters = () => {
+    setFilters({
+      nameFilter: '',
+      categoryFilter: ''
+    });
   };
 
   // Delete a single item
@@ -213,6 +261,74 @@ function ShoppingList() {
     );
   };
 
+  // Render filters section
+  const renderFilters = () => {
+    return (
+      <div className="filter-section">
+        <div className="filter-title">
+          <FaFilter /> סינון פריטים
+          {(filters.nameFilter || filters.categoryFilter) && (
+            <button className="btn btn-sm" onClick={resetFilters}>
+              נקה סינון
+            </button>
+          )}
+        </div>
+        
+        <div className="filter-controls">
+          <div className="filter-group">
+            <label htmlFor="nameFilter" className="filter-label">
+              <FaSearch /> חיפוש לפי שם
+            </label>
+            <input
+              type="text"
+              id="nameFilter"
+              name="nameFilter"
+              value={filters.nameFilter}
+              onChange={handleFilterChange}
+              className="form-input filter-input"
+              placeholder="הקלד שם פריט..."
+              dir="rtl"
+            />
+          </div>
+          
+          <div className="filter-group">
+            <label htmlFor="categoryFilter" className="filter-label">
+              <FaFilter /> סינון לפי קטגוריה
+            </label>
+            <select
+              id="categoryFilter"
+              name="categoryFilter"
+              value={filters.categoryFilter}
+              onChange={handleFilterChange}
+              className="form-select filter-input"
+              dir="rtl"
+            >
+              <option value="">כל הקטגוריות</option>
+              {CATEGORIES.map(category => (
+                <option key={category} value={category}>
+                  {category === 'Dairy' ? 'מוצרי חלב' :
+                   category === 'Meat' ? 'בשר' :
+                   category === 'Fish' ? 'דגים' :
+                   category === 'Produce' ? 'ירקות ופירות' :
+                   category === 'Bakery' ? 'מאפים' :
+                   category === 'Frozen' ? 'קפואים' :
+                   category === 'Beverages' ? 'משקאות' :
+                   category === 'Snacks' ? 'חטיפים' :
+                   category === 'Sweets' ? 'ממתקים' :
+                   category === 'Canned Goods' ? 'שימורים' :
+                   category === 'Household' ? 'מוצרי בית' :
+                   category === 'Personal Care' ? 'טיפוח אישי' :
+                   category === 'Grains' ? 'דגנים' :
+                   category}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="shopping-list" dir="rtl">
       <div className="shopping-list-header">
@@ -229,6 +345,8 @@ function ShoppingList() {
 
       {error && <div className="error-message">{error}</div>}
 
+      {!isLoading && items.length > 0 && renderFilters()}
+
       {renderBulkActions()}
 
       {isLoading ? (
@@ -238,9 +356,17 @@ function ShoppingList() {
           <FaShoppingBasket size={40} />
           <p>רשימת הקניות שלך ריקה. הוסף פריטים כדי להתחיל!</p>
         </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="empty-list">
+          <FaSearch size={40} />
+          <p>לא נמצאו פריטים התואמים לחיפוש שלך.</p>
+          <button className="btn btn-primary" onClick={resetFilters}>
+            נקה סינון
+          </button>
+        </div>
       ) : (
         <ul className="item-list">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <ShoppingItem
               key={item.id}
               item={item}

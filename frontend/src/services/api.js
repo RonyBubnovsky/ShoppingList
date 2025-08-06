@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { CATEGORIES } from '../constants/categories';
 
-// Base API URL - make sure this matches your backend
-const API_URL = 'http://localhost:5000/api';
+// Base API URL from environment variables
+const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // Create axios instance with default configuration
 const api = axios.create({

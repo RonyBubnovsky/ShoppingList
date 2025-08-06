@@ -56,13 +56,14 @@ function ShoppingItem({
       onClick={handleItemClick}
       dir="rtl"
     >
-      <input 
-        type="checkbox" 
-        className="item-checkbox" 
-        checked={isSelected}
-        onChange={handleCheckboxClick}
-        onClick={handleCheckboxClick}
-      />
+      <div className="checkbox-container" onClick={handleCheckboxClick}>
+        <input 
+          type="checkbox" 
+          className="item-checkbox" 
+          checked={isSelected}
+          readOnly
+        />
+      </div>
 
       <div className="item-info">
         <span className="item-name">{item.name}</span>

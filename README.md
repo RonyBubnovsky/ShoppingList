@@ -1,106 +1,73 @@
-# Shopping List Application
+# Shopping List App
 
-A full-stack shopping list application built with React, Vite, Node.js, Express, and SQLite with Prisma ORM.
+A simple shopping list application I built for my parents to help them manage grocery shopping more efficiently. The app makes it easy to create and manage shopping lists, track purchased items, and organize products by categories.
 
 ## Features
 
-- View, add, update, and delete shopping items
-- Mark items as purchased
-- Batch operations for multiple items
-- Categorize items by product type
-- Specify quantity and units for each item
-- Responsive design for all screen sizes
+- Add, edit, and remove shopping items
+- Mark items as purchased with a single click
+- Group similar items (automatically increases quantity of existing items)
+- Filter items by name or category
+- View statistics of purchased/remaining items
+- Mobile-friendly design with RTL (right-to-left) support
 
 ## Project Structure
 
 ```
-ShoppingListApp/
+ShoppingList/
 ├── frontend/            # React + Vite frontend
 │   ├── src/
-│   │   ├── components/  # React components
+│   │   ├── components/  # UI components
 │   │   ├── services/    # API services
-│   │   ├── App.jsx      # Main application component
-│   │   └── main.jsx     # Entry point
+│   │   ├── constants/   # Application constants
 │   └── ...
 └── backend/             # Node.js + Express backend
-    ├── prisma/          # Prisma schema and migrations
-    ├── index.js         # Express server
+    ├── controllers/     # Business logic
+    ├── routes/          # API routes
+    ├── prisma/          # Database schema and migrations
     └── ...
 ```
 
-## Technologies Used
+## Technology Stack
 
 ### Frontend
-- React (UI library)
-- Vite (build tool)
-- Axios (HTTP client)
-- React Icons (icon library)
+- React
+- Vite
+- Axios
 
 ### Backend
-- Node.js (runtime)
-- Express (web framework)
-- Prisma (ORM)
-- SQLite (database)
+- Node.js
+- Express
+- Prisma ORM
+- SQLite
 
 ## Getting Started
 
-### Prerequisites
-- Node.js (v14+)
-- npm (v6+)
-
-### Installation
-
 1. Clone the repository
-2. Install backend dependencies:
+2. Install dependencies for backend and frontend:
    ```
-   cd backend
-   npm install
+   cd backend && npm install
+   cd frontend && npm install
    ```
+3. Set up environment files:
 
-3. Install frontend dependencies:
+   **Frontend (.env file in frontend/ directory):**
    ```
-   cd frontend
-   npm install
-   ```
-
-### Running the Application
-
-1. Start the backend server:
-   ```
-   cd backend
-   npm run dev
+   VITE_API_BASE_URL=http://localhost:5000/api
    ```
 
-2. Start the frontend development server:
+   **Backend (.env file in backend/ directory):**
    ```
-   cd frontend
-   npm run dev
+   PORT=5000
+   DATABASE_URL="file:./prisma/dev.db"
    ```
 
-3. Open your browser and navigate to `http://localhost:5173`
-
-## API Endpoints
-
-- `GET /api/items` - Get all items
-- `POST /api/items` - Add a new item
-- `DELETE /api/items/:id` - Delete an item
-- `PATCH /api/items/:id/purchase` - Toggle item purchase status
-- `DELETE /api/items` - Delete multiple items
-- `PATCH /api/items/purchase` - Update purchase status for multiple items
-- `GET /api/categories` - Get all categories
-
-## Database Schema
-
-The application uses a single table for storing shopping list items:
-
-```prisma
-model Item {
-  id        Int      @id @default(autoincrement())
-  name      String
-  quantity  Int
-  unit      String
-  category  String
-  purchased Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-```
+4. Run the application:
+   ```
+   # Terminal 1 - Backend
+   cd backend && npm start
+   
+   # Terminal 2 - Frontend
+   cd frontend && npm run dev
+   ```
+5. Open your browser at http://localhost:5173
