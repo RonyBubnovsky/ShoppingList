@@ -11,8 +11,11 @@ const prisma = new PrismaClient({
   log: ['error'],
 });
 
-// Set up correct path to the database
-const dbPath = path.join(__dirname, 'prisma', 'dev.db');
+// Determine the database path based on environment
+const isProduction = process.env.NODE_ENV === 'production';
+const dbFileName = isProduction ? 'production.db' : 'dev.db';
+const dbPath = path.join(__dirname, 'prisma', dbFileName);
+console.log(`Environment: ${isProduction ? 'Production' : 'Development'}`);
 console.log(`Using database at: ${dbPath}`);
 
 // Ensure the database file exists
