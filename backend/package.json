@@ -7,8 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "node setup-render.js",
-    "postinstall": "prisma generate"
+    "build": "node setup-render.js"
   },
   "keywords": [
     "shopping",
@@ -20,12 +19,10 @@
   "type": "commonjs",
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
-    "@prisma/client": "^6.13.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
-    "prisma": "^5.10.0",
-    "sqlite3": "^5.1.7"
+    "mongoose": "^8.17.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"

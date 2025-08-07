@@ -11,16 +11,16 @@ function ShoppingItem({
 }) {
   const handleDelete = (e) => {
     e.stopPropagation();
-    onDelete(item.id);
+    onDelete(item._id);
   };
 
   const handleTogglePurchased = (e) => {
     e.stopPropagation();
-    onTogglePurchased(item.id);
+    onTogglePurchased(item._id);
   };
 
   const handleItemClick = () => {
-    onSelectItem(item.id);
+    onSelectItem(item._id);
   };
 
   const handleCheckboxClick = (e) => {

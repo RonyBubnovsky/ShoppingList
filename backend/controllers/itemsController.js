@@ -1,60 +1,23 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({
-  log: ['error'],
-});
+const Item = require('../models/Item');
 
-// SQLite database instance will be passed from index.js
-let db;
-
-// Set the SQLite database instance
-const setDatabase = (database) => {
-  db = database;
-};
-
-// Helper function for SQLite queries
-const runQuery = (query, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows);
-      }
-    });
-  });
-};
-
-// Get all shopping list items
+/**
+ * Get all items
+ * @route GET /api/items
+ */
 const getAllItems = async (req, res) => {
   try {
-    // Try with Prisma first
-    try {
-      const items = await prisma.item.findMany({
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-      return res.json(items);
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      const items = await runQuery(`
-        SELECT id, name, quantity, unit, category, 
-               purchased, createdAt 
-        FROM Item 
-        ORDER BY createdAt DESC
-      `);
-      
-      return res.json(items);
-    }
+    const items = await Item.find().sort({ createdAt: -1 });
+    res.json(items);
   } catch (error) {
     console.error('Error fetching items:', error);
     res.status(500).json({ error: 'Failed to fetch items' });
   }
 };
 
-// Add a new item
+/**
+ * Add a new item
+ * @route POST /api/items
+ */
 const addItem = async (req, res) => {
   try {
     const { name, quantity, unit, category } = req.body;
@@ -63,339 +26,170 @@ const addItem = async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    const parsedQuantity = parseInt(quantity);
+    // Check if same item already exists (same name, unit and category)
+    const existingItem = await Item.findOne({
+      name,
+      unit,
+      category
+    });
     
-    // Try with Prisma first
-    try {
-      // Check if same item already exists (same name, unit and category)
-      const existingItem = await prisma.item.findFirst({
-        where: {
-          name: name,
-          unit: unit,
-          category: category,
-        }
-      });
-      
-      // If item exists, update quantity instead of creating new one
-      if (existingItem) {
-        const updatedItem = await prisma.item.update({
-          where: { id: existingItem.id },
-          data: {
-            quantity: existingItem.quantity + parsedQuantity
-          }
-        });
-        
-        return res.status(200).json(updatedItem);
-      }
-      
-      // Item doesn't exist, create new one
-      const newItem = await prisma.item.create({
-        data: {
-          name,
-          quantity: parsedQuantity,
-          unit,
-          category,
-          purchased: false,
-        },
-      });
-      
-      return res.status(201).json(newItem);
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      try {
-        // Check if same item already exists
-        const existingItems = await runQuery(
-          `SELECT * FROM Item WHERE name = ? AND unit = ? AND category = ?`,
-          [name, unit, category]
-        );
-        
-        if (existingItems && existingItems.length > 0) {
-          // Item exists, update quantity
-          const existingItem = existingItems[0];
-          const newQuantity = existingItem.quantity + parsedQuantity;
-          
-          await new Promise((resolve, reject) => {
-            db.run(
-              `UPDATE Item SET quantity = ? WHERE id = ?`,
-              [newQuantity, existingItem.id],
-              function(err) {
-                if (err) {
-                  reject(err);
-                } else {
-                  resolve();
-                }
-              }
-            );
-          });
-          
-          // Get updated item
-          const updatedItems = await runQuery(
-            `SELECT * FROM Item WHERE id = ?`,
-            [existingItem.id]
-          );
-          
-          return res.status(200).json(updatedItems[0]);
-        } else {
-          // Item doesn't exist, create new one
-          const result = await new Promise((resolve, reject) => {
-            db.run(
-              `INSERT INTO Item (name, quantity, unit, category, purchased) 
-               VALUES (?, ?, ?, ?, ?)`,
-              [name, parsedQuantity, unit, category, false],
-              function(err) {
-                if (err) {
-                  reject(err);
-                } else {
-                  db.get(`SELECT * FROM Item WHERE id = ?`, [this.lastID], (err, row) => {
-                    if (err) {
-                      reject(err);
-                    } else {
-                      resolve(row);
-                    }
-                  });
-                }
-              }
-            );
-          });
-          
-          return res.status(201).json(result);
-        }
-      } catch (sqliteError) {
-        throw sqliteError;
-      }
+    // If item exists, update quantity instead of creating new one
+    if (existingItem) {
+      existingItem.quantity += parseInt(quantity);
+      await existingItem.save();
+      return res.status(200).json(existingItem);
     }
+    
+    // Create new item
+    const newItem = new Item({
+      name,
+      quantity: parseInt(quantity),
+      unit,
+      category,
+      purchased: false
+    });
+    
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
   } catch (error) {
-    console.error('Error creating/updating item:', error);
-    res.status(500).json({ error: 'Failed to create or update item' });
+    console.error('Error adding item:', error);
+    res.status(500).json({ error: 'Failed to add item' });
   }
 };
 
-// Delete a single item
+/**
+ * Delete an item
+ * @route DELETE /api/items/:id
+ */
 const deleteItem = async (req, res) => {
   try {
-    const { id } = req.params;
-    const itemId = parseInt(id);
+    const itemId = req.params.id;
+    const deletedItem = await Item.findByIdAndDelete(itemId);
     
-    try {
-      await prisma.item.delete({
-        where: { id: itemId },
-      });
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      await new Promise((resolve, reject) => {
-        db.run(`DELETE FROM Item WHERE id = ?`, [itemId], function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        });
-      });
+    if (!deletedItem) {
+      return res.status(404).json({ error: 'Item not found' });
     }
     
-    res.json({ message: 'Item deleted successfully' });
+    res.json({ message: 'Item deleted', id: itemId });
   } catch (error) {
     console.error('Error deleting item:', error);
     res.status(500).json({ error: 'Failed to delete item' });
   }
 };
 
-// Toggle item purchased status
+/**
+ * Toggle item purchased status
+ * @route PUT /api/items/:id/toggle
+ */
 const toggleItemPurchased = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { purchased } = req.body;
-    const itemId = parseInt(id);
+    const itemId = req.params.id;
+    const item = await Item.findById(itemId);
     
-    // Get the current item to determine its current state if needed
-    const items = await runQuery(
-      `SELECT * FROM Item WHERE id = ?`,
-      [itemId]
-    );
-    
-    if (!items || items.length === 0) {
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
     
-    const currentItem = items[0];
+    item.purchased = !item.purchased;
+    await item.save();
     
-    // If purchased wasn't provided in request body, toggle the current value
-    const newPurchasedState = purchased !== undefined ? purchased : !currentItem.purchased;
-    
-    // Update using SQLite directly
-    await new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE Item SET purchased = ? WHERE id = ?`,
-        [newPurchasedState ? 1 : 0, itemId],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
-    
-    const updatedItem = await runQuery(
-      `SELECT * FROM Item WHERE id = ?`,
-      [itemId]
-    );
-    
-    return res.json(updatedItem[0]);
+    res.json(item);
   } catch (error) {
-    console.error('Error updating item:', error);
+    console.error('Error toggling item purchased status:', error);
     res.status(500).json({ error: 'Failed to update item' });
   }
 };
 
-// Delete multiple items
+/**
+ * Delete multiple items
+ * @route DELETE /api/items
+ */
 const deleteMultipleItems = async (req, res) => {
   try {
     const { ids } = req.body;
     
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'Item IDs are required' });
+      return res.status(400).json({ error: 'No valid IDs provided' });
     }
     
-    const itemIds = ids.map(id => parseInt(id));
-    const placeholders = itemIds.map(() => '?').join(',');
+    const result = await Item.deleteMany({ _id: { $in: ids } });
     
-    try {
-      await prisma.item.deleteMany({
-        where: {
-          id: { in: itemIds },
-        },
-      });
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      await new Promise((resolve, reject) => {
-        db.run(
-          `DELETE FROM Item WHERE id IN (${placeholders})`,
-          itemIds,
-          function(err) {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          }
-        );
-      });
-    }
-    
-    res.json({ message: 'Items deleted successfully' });
+    res.json({
+      message: `${result.deletedCount} items deleted`,
+      count: result.deletedCount
+    });
   } catch (error) {
-    console.error('Error deleting items:', error);
+    console.error('Error deleting multiple items:', error);
     res.status(500).json({ error: 'Failed to delete items' });
   }
 };
 
-// Mark multiple items as purchased
+/**
+ * Toggle purchased status for multiple items
+ * @route PUT /api/items/toggle
+ */
 const toggleMultipleItemsPurchased = async (req, res) => {
   try {
     const { ids, purchased } = req.body;
     
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'Item IDs are required' });
+      return res.status(400).json({ error: 'No valid IDs provided' });
     }
     
-    const itemIds = ids.map(id => parseInt(id));
-    const placeholders = itemIds.map(() => '?').join(',');
-    
-    try {
-      await prisma.item.updateMany({
-        where: {
-          id: { in: itemIds },
-        },
-        data: { purchased },
-      });
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      await new Promise((resolve, reject) => {
-        db.run(
-          `UPDATE Item SET purchased = ? WHERE id IN (${placeholders})`,
-          [purchased ? 1 : 0, ...itemIds],
-          function(err) {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
-          }
-        );
-      });
+    if (purchased === undefined) {
+      return res.status(400).json({ error: 'Purchased status not provided' });
     }
     
-    res.json({ message: 'Items updated successfully' });
+    const result = await Item.updateMany(
+      { _id: { $in: ids } },
+      { $set: { purchased } }
+    );
+    
+    res.json({
+      message: `${result.modifiedCount} items updated`,
+      count: result.modifiedCount
+    });
   } catch (error) {
-    console.error('Error updating items:', error);
+    console.error('Error toggling multiple items purchased status:', error);
     res.status(500).json({ error: 'Failed to update items' });
   }
 };
 
-// Get item statistics
+/**
+ * Get item statistics
+ * @route GET /api/items/stats
+ */
 const getItemStats = async (req, res) => {
   try {
-    // Try with Prisma first
-    try {
-      const totalItems = await prisma.item.count();
-      const purchasedItems = await prisma.item.count({
-        where: { purchased: true }
-      });
-      const unpurchasedItems = totalItems - purchasedItems;
-      
-      return res.json({
-        total: totalItems,
-        purchased: purchasedItems,
-        unpurchased: unpurchasedItems
-      });
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      const totalResult = await runQuery('SELECT COUNT(*) as total FROM Item');
-      const total = totalResult[0].total;
-      
-      const purchasedResult = await runQuery('SELECT COUNT(*) as purchased FROM Item WHERE purchased = 1');
-      const purchased = purchasedResult[0].purchased;
-      
-      const unpurchased = total - purchased;
-      
-      return res.json({
-        total,
-        purchased,
-        unpurchased
-      });
-    }
+    const totalItems = await Item.countDocuments();
+    const purchasedItems = await Item.countDocuments({ purchased: true });
+    const remainingItems = totalItems - purchasedItems;
+    
+    res.json({
+      total: totalItems,
+      purchased: purchasedItems,
+      remaining: remainingItems
+    });
   } catch (error) {
-    console.error('Error fetching item stats:', error);
-    res.status(500).json({ error: 'Failed to fetch item statistics' });
+    console.error('Error fetching item statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
   }
 };
 
-// Get a single item by ID
+/**
+ * Get a single item by ID
+ * @route GET /api/items/:id
+ */
 const getItemById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const itemId = parseInt(id);
+    const itemId = req.params.id;
+    const item = await Item.findById(itemId);
     
-    // Skip Prisma and use SQLite directly to avoid errors
-    const items = await runQuery(`SELECT * FROM Item WHERE id = ?`, [itemId]);
-    
-    if (!items || items.length === 0) {
+    if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
     
-    return res.json(items[0]);
+    res.json(item);
   } catch (error) {
     console.error('Error fetching item:', error);
     res.status(500).json({ error: 'Failed to fetch item' });
@@ -403,13 +197,12 @@ const getItemById = async (req, res) => {
 };
 
 module.exports = {
-  setDatabase,
   getAllItems,
-  getItemById,
   addItem,
   deleteItem,
   toggleItemPurchased,
   deleteMultipleItems,
   toggleMultipleItemsPurchased,
-  getItemStats
+  getItemStats,
+  getItemById
 };

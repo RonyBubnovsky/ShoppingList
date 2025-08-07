@@ -122,7 +122,7 @@ function ShoppingList() {
   const handleDeleteItem = async (id) => {
     try {
       await itemsApi.deleteItem(id);
-      setItems(items.filter(item => item.id !== id));
+      setItems(items.filter(item => item._id !== id));
       setSelectedItems(selectedItems.filter(itemId => itemId !== id));
     } catch (err) {
       console.error('Failed to delete item:', err);
@@ -135,7 +135,7 @@ function ShoppingList() {
     try {
       const updatedItem = await itemsApi.toggleItemPurchased(id);
       setItems(items.map(item => (
-        item.id === id ? updatedItem : item
+        item._id === id ? updatedItem : item
       )));
     } catch (err) {
       console.error('Failed to update item:', err);
@@ -159,7 +159,7 @@ function ShoppingList() {
     if (selectedItems.length === items.length) {
       setSelectedItems([]);
     } else {
-      setSelectedItems(items.map(item => item.id));
+      setSelectedItems(items.map(item => item._id));
     }
   };
 
@@ -169,7 +169,7 @@ function ShoppingList() {
     
     try {
       await itemsApi.deleteMultipleItems(selectedItems);
-      setItems(items.filter(item => !selectedItems.includes(item.id)));
+      setItems(items.filter(item => !selectedItems.includes(item._id)));
       setSelectedItems([]);
     } catch (err) {
       console.error('Failed to delete items:', err);
@@ -184,7 +184,7 @@ function ShoppingList() {
     try {
       await itemsApi.updateMultipleItems(selectedItems, purchased);
       setItems(items.map(item => (
-        selectedItems.includes(item.id) ? { ...item, purchased } : item
+        selectedItems.includes(item._id) ? { ...item, purchased } : item
       )));
       // Clear selection after marking items
       setSelectedItems([]);
@@ -362,8 +362,8 @@ function ShoppingList() {
               item={item}
               onDelete={handleDeleteItem}
               onTogglePurchased={handleTogglePurchased}
-              isSelected={selectedItems.includes(item.id)}
-              onSelectItem={handleSelectItem}
+              isSelected={selectedItems.includes(item._id)}
+              onSelectItem={() => handleSelectItem(item._id)}
             />
           ))}
         </ul>

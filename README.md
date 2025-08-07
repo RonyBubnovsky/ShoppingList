@@ -42,8 +42,7 @@ ShoppingList/
 ### Backend
 - Node.js
 - Express
-- Prisma ORM
-- SQLite
+- MongoDB (Mongoose)
 - Google Gemini API
 - Pexels API
 
@@ -65,7 +64,7 @@ ShoppingList/
    **Backend (.env file in backend/ directory):**
    ```
    PORT=5000
-   DATABASE_URL="file:./prisma/dev.db"
+   MONGO_URI="your_mongodb_connection_string_here"
    GEMINI_API_KEY="your_gemini_api_key_here"
    PEXELS_API="your_pexels_api_key_here"
    ```
