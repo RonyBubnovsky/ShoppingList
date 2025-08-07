@@ -22,8 +22,14 @@ export const itemsApi = {
   
   // Get item statistics
   getItemStats: async () => {
-    const response = await api.get('/items/stats');
-    return response.data;
+    try {
+      const response = await api.get('/items/stats');
+      return response.data;
+    } catch (error) {
+      // If the endpoint fails, return null to trigger local calculation
+      console.warn('Stats endpoint failed, will calculate locally');
+      return null;
+    }
   },
   
   // Add a new item to the shopping list

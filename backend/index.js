@@ -20,11 +20,30 @@ console.log(`Using database at: ${dbPath}`);
 
 // Ensure the database file exists
 if (!fs.existsSync(dbPath)) {
-  console.log(`Database file not found at ${dbPath}. Please run setup-db.js first.`);
+  console.log(`Database file not found at ${dbPath}. Creating it.`);
+  
+  // Ensure the directory exists
+  const dbDir = path.dirname(dbPath);
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+  
   // Try to create an empty file
   try {
     fs.writeFileSync(dbPath, '');
     console.log('Created empty database file');
+    
+    // Run migrations immediately if in production
+    if (isProduction) {
+      try {
+        const { execSync } = require('child_process');
+        console.log('Running database migrations...');
+        execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+        console.log('Migrations completed successfully');
+      } catch (migrationErr) {
+        console.error('Error running migrations:', migrationErr);
+      }
+    }
   } catch (err) {
     console.error('Error creating database file:', err);
   }

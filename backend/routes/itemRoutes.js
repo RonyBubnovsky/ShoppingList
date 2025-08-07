@@ -5,6 +5,9 @@ const itemsController = require('../controllers/itemsController');
 // Get all items
 router.get('/', itemsController.getAllItems);
 
+// Get item statistics (total, purchased, unpurchased)
+router.get('/stats', itemsController.getItemStats);
+
 // Get a single item by ID
 router.get('/:id', itemsController.getItemById);
 
@@ -22,8 +25,5 @@ router.delete('/', itemsController.deleteMultipleItems);
 
 // Toggle purchased status for multiple items
 router.patch('/purchase', itemsController.toggleMultipleItemsPurchased);
-
-// Get item statistics (total, purchased, unpurchased)
-router.get('/stats', itemsController.getItemStats);
 
 module.exports = router;

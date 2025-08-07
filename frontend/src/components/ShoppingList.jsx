@@ -77,13 +77,13 @@ function ShoppingList() {
       setItems(data);
       setFilteredItems(data);
       
-      // Try to get stats from the server (more efficient for large lists)
-      try {
-        const statsData = await itemsApi.getItemStats();
+      // Calculate stats (either from server or locally)
+      const statsData = await itemsApi.getItemStats();
+      if (statsData) {
+        // Use server-provided stats
         setStats(statsData);
-      } catch (statsErr) {
-        // If server stats fail, calculate locally
-        console.warn('Could not fetch stats from server, calculating locally:', statsErr);
+      } else {
+        // Calculate locally
         const purchased = data.filter(item => item.purchased).length;
         setStats({
           total: data.length,
