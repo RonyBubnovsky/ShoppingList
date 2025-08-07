@@ -9,6 +9,7 @@ A simple shopping list application I built for my parents to help them manage gr
 - Group similar items (automatically increases quantity of existing items)
 - Filter items by name or category
 - View statistics of purchased/remaining items
+- Share shopping list via WhatsApp - Send your shopping list to family or friends with one click
 - Mobile-friendly design with RTL (right-to-left) support
 - AI-powered item parsing using Google Gemini API (add multiple items with plain text)
 - Product images automatically fetched via Pexels API
@@ -35,11 +36,14 @@ ShoppingList/
 ## Technology Stack
 
 ### Frontend
+
 - React
 - Vite
 - Axios
+- React Icons
 
 ### Backend
+
 - Node.js
 - Express
 - MongoDB (Mongoose)
@@ -57,11 +61,13 @@ ShoppingList/
 3. Set up environment files:
 
    **Frontend (.env file in frontend/ directory):**
+
    ```
    VITE_API_BASE_URL=http://localhost:5000/api
    ```
 
    **Backend (.env file in backend/ directory):**
+
    ```
    PORT=5000
    MONGO_URI="your_mongodb_connection_string_here"
@@ -70,11 +76,13 @@ ShoppingList/
    ```
 
 4. Run the application:
+
    ```
    # Terminal 1 - Backend
    cd backend && npm start
-   
+
    # Terminal 2 - Frontend
    cd frontend && npm run dev
    ```
+
 5. Open your browser at http://localhost:5173
