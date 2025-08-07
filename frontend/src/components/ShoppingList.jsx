@@ -12,6 +12,7 @@ import {
   FaFilter,
   FaSearch
 } from 'react-icons/fa';
+import { CATEGORY_TRANSLATIONS } from '../constants/categoryIcons';
 
 function ShoppingList() {
   const [items, setItems] = useState([]);
@@ -185,6 +186,8 @@ function ShoppingList() {
       setItems(items.map(item => (
         selectedItems.includes(item.id) ? { ...item, purchased } : item
       )));
+      // Clear selection after marking items
+      setSelectedItems([]);
     } catch (err) {
       console.error('Failed to update items:', err);
       setError('עדכון הפריטים שנבחרו נכשל. נא לנסות שוב.');
@@ -210,19 +213,19 @@ function ShoppingList() {
         </div>
         <div className="bulk-actions-buttons">
           <button 
-            className="btn btn-success" 
+            className="btn bulk-btn mark-purchased" 
             onClick={() => handleMarkSelectedPurchased(true)}
           >
             <FaCheck /> סמן כנקנה
           </button>
           <button 
-            className="btn btn-primary" 
+            className="btn bulk-btn mark-unpurchased" 
             onClick={() => handleMarkSelectedPurchased(false)}
           >
             <FaUndo /> סמן כלא נקנה
           </button>
           <button 
-            className="btn btn-danger" 
+            className="btn bulk-btn delete-selected" 
             onClick={handleDeleteSelected}
           >
             <FaTrash /> מחק נבחרים
@@ -306,20 +309,7 @@ function ShoppingList() {
               <option value="">כל הקטגוריות</option>
               {CATEGORIES.map(category => (
                 <option key={category} value={category}>
-                  {category === 'Dairy' ? 'מוצרי חלב' :
-                   category === 'Meat' ? 'בשר' :
-                   category === 'Fish' ? 'דגים' :
-                   category === 'Produce' ? 'ירקות ופירות' :
-                   category === 'Bakery' ? 'מאפים' :
-                   category === 'Frozen' ? 'קפואים' :
-                   category === 'Beverages' ? 'משקאות' :
-                   category === 'Snacks' ? 'חטיפים' :
-                   category === 'Sweets' ? 'ממתקים' :
-                   category === 'Canned Goods' ? 'שימורים' :
-                   category === 'Household' ? 'מוצרי בית' :
-                   category === 'Personal Care' ? 'טיפוח אישי' :
-                   category === 'Grains' ? 'דגנים' :
-                   category}
+                  {CATEGORY_TRANSLATIONS[category] || category}
                 </option>
               ))}
             </select>

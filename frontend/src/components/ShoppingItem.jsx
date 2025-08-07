@@ -1,50 +1,28 @@
 import React from 'react';
 import { FaTrash, FaCheck, FaUndo } from 'react-icons/fa';
-
-// Hebrew category translations
-const CATEGORY_TRANSLATIONS = {
-  'Dairy': 'מוצרי חלב',
-  'Meat': 'בשר',
-  'Fish': 'דגים',
-  'Produce': 'ירקות ופירות',
-  'Bakery': 'מאפים',
-  'Frozen': 'קפואים',
-  'Beverages': 'משקאות',
-  'Snacks': 'חטיפים',
-  'Sweets': 'ממתקים',
-  'Canned Goods': 'שימורים',
-  'Household': 'מוצרי בית',
-  'Personal Care': 'טיפוח אישי',
-  'Grains': 'דגנים',
-};
+import { CATEGORY_TRANSLATIONS, CATEGORY_ICONS } from '../constants/categoryIcons';
 
 function ShoppingItem({ 
   item, 
   onDelete, 
   onTogglePurchased, 
-  isSelected,
-  onSelectItem 
+  onSelectItem, 
+  isSelected 
 }) {
-  // Handle delete button click
   const handleDelete = (e) => {
     e.stopPropagation();
     onDelete(item.id);
   };
-  
-  // Handle toggle purchased status
+
   const handleTogglePurchased = (e) => {
     e.stopPropagation();
-    onTogglePurchased(item.id, !item.purchased);
+    onTogglePurchased(item.id);
   };
 
-  // Handle item selection for bulk actions
-  const handleItemClick = (e) => {
-    if (onSelectItem) {
-      onSelectItem(item.id);
-    }
+  const handleItemClick = () => {
+    onSelectItem(item.id);
   };
 
-  // Fix for checkbox click issue - prevent propagation
   const handleCheckboxClick = (e) => {
     e.stopPropagation();
     onSelectItem(item.id);
@@ -69,6 +47,7 @@ function ShoppingItem({
         <span className="item-name">{item.name}</span>
         <span className="item-details">
           <span className="item-category">
+            {React.createElement(CATEGORY_ICONS[item.category], { className: 'category-icon' })}
             {CATEGORY_TRANSLATIONS[item.category] || item.category}
           </span>
           {item.quantity} {item.unit}
@@ -77,7 +56,7 @@ function ShoppingItem({
 
       <div className="item-actions">
         <button 
-          className={`action-btn ${item.purchased ? '' : 'check'}`} 
+          className={`action-btn ${item.purchased ? 'unpurchase' : 'check'}`} 
           onClick={handleTogglePurchased}
           aria-label={item.purchased ? "סמן כלא נקנה" : "סמן כנקנה"}
         >

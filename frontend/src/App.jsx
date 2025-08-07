@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import Header from './components/Header';
 import AddItemForm from './components/AddItemForm';
 import ShoppingList from './components/ShoppingList';
-import './index.css';
 
 function App() {
   const [refreshList, setRefreshList] = useState(false);
