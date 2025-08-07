@@ -169,6 +169,17 @@
   transition: all var(--transition-speed);
   color: var(--text-light);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* Loading state styles */
+.action-btn.loading {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.action-btn .spinner {
+  animation: spin 1s linear infinite;
 }
 
 .action-btn.check {

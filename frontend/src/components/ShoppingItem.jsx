@@ -1,5 +1,5 @@
-import React from 'react';
-import { FaTrash, FaCheck, FaUndo } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaTrash, FaCheck, FaUndo, FaSpinner } from 'react-icons/fa';
 import { CATEGORY_TRANSLATIONS, CATEGORY_ICONS } from '../constants/categoryIcons';
 
 function ShoppingItem({ 
@@ -9,14 +9,28 @@ function ShoppingItem({
   onSelectItem, 
   isSelected 
 }) {
-  const handleDelete = (e) => {
+  const [isLoading, setIsLoading] = useState({
+    toggle: false,
+    delete: false
+  });
+  const handleDelete = async (e) => {
     e.stopPropagation();
-    onDelete(item._id);
+    try {
+      setIsLoading(prev => ({ ...prev, delete: true }));
+      await onDelete(item._id);
+    } finally {
+      setIsLoading(prev => ({ ...prev, delete: false }));
+    }
   };
 
-  const handleTogglePurchased = (e) => {
+  const handleTogglePurchased = async (e) => {
     e.stopPropagation();
-    onTogglePurchased(item._id);
+    try {
+      setIsLoading(prev => ({ ...prev, toggle: true }));
+      await onTogglePurchased(item._id);
+    } finally {
+      setIsLoading(prev => ({ ...prev, toggle: false }));
+    }
   };
 
   const handleItemClick = () => {
@@ -25,7 +39,7 @@ function ShoppingItem({
 
   const handleCheckboxClick = (e) => {
     e.stopPropagation();
-    onSelectItem(item.id);
+    onSelectItem(item._id);
   };
 
   return (
@@ -87,18 +101,26 @@ function ShoppingItem({
 
       <div className="item-actions">
         <button 
-          className={`action-btn ${item.purchased ? 'unpurchase' : 'check'}`} 
+          className={`action-btn ${item.purchased ? 'unpurchase' : 'check'} ${isLoading.toggle ? 'loading' : ''}`} 
           onClick={handleTogglePurchased}
+          disabled={isLoading.toggle}
           aria-label={item.purchased ? "סמן כלא נקנה" : "סמן כנקנה"}
         >
-          {item.purchased ? <FaUndo /> : <FaCheck />}
+          {isLoading.toggle ? 
+            <FaSpinner className="spinner" /> : 
+            (item.purchased ? <FaUndo /> : <FaCheck />)
+          }
         </button>
         <button 
-          className="action-btn delete" 
+          className={`action-btn delete ${isLoading.delete ? 'loading' : ''}`}
           onClick={handleDelete}
+          disabled={isLoading.delete}
           aria-label="מחק פריט"
         >
-          <FaTrash />
+          {isLoading.delete ? 
+            <FaSpinner className="spinner" /> : 
+            <FaTrash />
+          }
         </button>
       </div>
     </li>
