@@ -26,7 +26,7 @@ ShoppingList/
 └── backend/             # Node.js + Express backend
     ├── controllers/     # Business logic
     ├── routes/          # API routes
-    ├── prisma/          # Database schema and migrations
+    ├── models/          # Database models
     ├── services/        # External services like Gemini API
     ├── prompts/         # AI prompt templates
     └── ...
