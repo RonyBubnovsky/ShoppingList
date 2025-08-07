@@ -10,7 +10,8 @@ import {
   FaListAlt,
   FaCheckCircle,
   FaFilter,
-  FaSearch
+  FaSearch,
+  FaWhatsapp
 } from 'react-icons/fa';
 import { CATEGORY_TRANSLATIONS } from '../constants/categoryIcons';
 
@@ -199,6 +200,31 @@ function ShoppingList() {
     setItems([newItem, ...items]);
   };
 
+  // Share shopping list via WhatsApp
+  const handleShareWhatsApp = () => {
+    // Filter items to show only unpurchased ones (items to buy)
+    const itemsToBuy = filteredItems.filter(item => !item.purchased);
+    
+    let message = "רשימת קניות:\n\n";
+    
+    if (itemsToBuy.length > 0) {
+      itemsToBuy.forEach((item, index) => {
+        message += `${index + 1}. ${item.name} - ${item.quantity} ${item.unit}\n`;
+      });
+    } else {
+      message += "כל הפריטים כבר נקנו!";
+    }
+    
+    // Encode the message for URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // WhatsApp Web/App URL
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    // Open WhatsApp
+    window.open(whatsappUrl, '_blank');
+  };
+
   // Render bulk actions section if items are selected
   const renderBulkActions = () => {
     if (selectedItems.length === 0) return null;
@@ -323,12 +349,23 @@ function ShoppingList() {
     <div className="shopping-list" dir="rtl">
       <div className="shopping-list-header">
         <h2 className="shopping-list-title">פריטים ברשימה</h2>
-        <button className="btn btn-primary" onClick={handleSelectAll}>
-          {selectedItems.length === items.length && items.length > 0
-            ? 'בטל בחירה'
-            : 'בחר הכל'
-          }
-        </button>
+        <div className="header-actions">
+          {items.length > 0 && filteredItems.some(item => !item.purchased) && (
+            <button 
+              className="btn btn-whatsapp" 
+              onClick={handleShareWhatsApp}
+              title="שתף רשימה בווצאפ"
+            >
+              <FaWhatsapp /> שתף בווצאפ
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={handleSelectAll}>
+            {selectedItems.length === items.length && items.length > 0
+              ? 'בטל בחירה'
+              : 'בחר הכל'
+            }
+          </button>
+        </div>
       </div>
 
       {!isLoading && items.length > 0 && renderShoppingStats()}
