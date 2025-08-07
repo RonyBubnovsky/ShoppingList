@@ -2,12 +2,45 @@ const { PrismaClient } = require('@prisma/client');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-const prisma = new PrismaClient();
+// Initialize Prisma, but prepare for fallback to SQLite if needed
+let prisma;
+try {
+  prisma = new PrismaClient();
+} catch (error) {
+  console.error('Failed to initialize Prisma client:', error);
+}
+
 const PEXELS_API_KEY = process.env.PEXELS_API;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 // Initialize the Google Generative AI client for translation
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+// SQLite database instance will be passed from index.js
+let db;
+
+// Set the SQLite database instance
+const setDatabase = (database) => {
+  db = database;
+  
+  // Ensure the ImageCache table exists in SQLite
+  if (db) {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS ImageCache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        itemName TEXT UNIQUE,
+        imageUrl TEXT,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `, (err) => {
+      if (err) {
+        console.error('Error creating ImageCache table:', err);
+      } else {
+        console.log('ImageCache table ready');
+      }
+    });
+  }
+};
 
 /**
  * Gets an image for an item by name
@@ -18,31 +51,96 @@ async function getItemImage(itemName) {
   const normalizedName = itemName.trim().toLowerCase();
   
   try {
-    // Check if image exists in cache
-    const cachedImage = await prisma.imageCache.findUnique({
-      where: {
-        itemName: normalizedName,
-      },
-    });
-    
-    // If found in cache, return it
-    if (cachedImage) {
-      console.log(`Found cached image for: ${normalizedName}`);
-      return cachedImage.imageUrl;
+    // Try with Prisma first
+    if (prisma) {
+      try {
+        // Check if image exists in cache using Prisma
+        const cachedImage = await prisma.imageCache.findUnique({
+          where: {
+            itemName: normalizedName,
+          },
+        });
+        
+        // If found in cache, return it
+        if (cachedImage) {
+          console.log(`Found cached image for: ${normalizedName}`);
+          return cachedImage.imageUrl;
+        }
+      } catch (prismaError) {
+        console.error('Prisma error, falling back to SQLite for image cache:', prismaError);
+        // Continue with SQLite fallback below
+      }
+    }
+
+    // Fallback to direct SQLite if Prisma failed or not available
+    if (db) {
+      try {
+        // Check if image exists in cache using SQLite
+        const cachedImage = await new Promise((resolve, reject) => {
+          db.get(
+            `SELECT imageUrl FROM ImageCache WHERE itemName = ?`,
+            [normalizedName],
+            (err, row) => {
+              if (err) reject(err);
+              else resolve(row);
+            }
+          );
+        });
+        
+        // If found in SQLite cache, return it
+        if (cachedImage) {
+          console.log(`Found cached image in SQLite for: ${normalizedName}`);
+          return cachedImage.imageUrl;
+        }
+      } catch (sqliteError) {
+        console.error('SQLite error when checking image cache:', sqliteError);
+      }
     }
     
-    // If not in cache, search Pexels
+    // If not found in any cache, search Pexels
     console.log(`Searching Pexels for: ${normalizedName}`);
     const imageUrl = await searchPexelsImage(normalizedName);
     
     if (imageUrl) {
-      // Save the image to cache for future use
-      await prisma.imageCache.create({
-        data: {
-          itemName: normalizedName,
-          imageUrl,
-        },
-      });
+      // Try to save to cache - first with Prisma, then fallback to SQLite
+      try {
+        // Try with Prisma first
+        if (prisma) {
+          try {
+            await prisma.imageCache.create({
+              data: {
+                itemName: normalizedName,
+                imageUrl,
+              },
+            });
+            console.log(`Saved image to Prisma cache: ${normalizedName}`);
+          } catch (prismaError) {
+            console.error('Prisma error when saving to cache, trying SQLite:', prismaError);
+            throw prismaError; // Continue to SQLite fallback
+          }
+        } else {
+          throw new Error('Prisma not available'); // Continue to SQLite fallback
+        }
+      } catch (error) {
+        // Fallback to SQLite for saving
+        if (db) {
+          try {
+            await new Promise((resolve, reject) => {
+              db.run(
+                `INSERT INTO ImageCache (itemName, imageUrl) VALUES (?, ?)`,
+                [normalizedName, imageUrl],
+                function(err) {
+                  if (err) reject(err);
+                  else resolve(this.lastID);
+                }
+              );
+            });
+            console.log(`Saved image to SQLite cache: ${normalizedName}`);
+          } catch (sqliteError) {
+            console.error('Error saving to SQLite cache:', sqliteError);
+          }
+        }
+      }
     }
     
     return imageUrl;
@@ -170,4 +268,5 @@ English:`;
 
 module.exports = {
   getItemImage,
+  setDatabase,
 };

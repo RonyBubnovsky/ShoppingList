@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const itemRoutes = require('./routes/itemRoutes');
 const parseRoutes = require('./routes/parseRoutes');
+const imageService = require('./services/imageService');
 
 // Initialize Prisma Client with logging
 const prisma = new PrismaClient({
@@ -83,6 +84,7 @@ const itemsController = require('./controllers/itemsController');
 const parseController = require('./controllers/parseController');
 itemsController.setDatabase(db);
 parseController.setDatabase(db);
+imageService.setDatabase(db); // Also pass db to image service for cache fallback
 
 const app = express();
 const PORT = process.env.PORT || 5000;
