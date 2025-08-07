@@ -212,65 +212,41 @@ const toggleItemPurchased = async (req, res) => {
     const itemId = parseInt(id);
     
     // Get the current item to determine its current state if needed
-    let currentItem;
-    try {
-      currentItem = await prisma.item.findUnique({
-        where: { id: itemId },
-      });
-      
-      if (!currentItem) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
-    } catch (prismaError) {
-      console.error('Prisma error getting current item, falling back to SQLite:', prismaError);
-      
-      const items = await runQuery(
-        `SELECT * FROM Item WHERE id = ?`,
-        [itemId]
-      );
-      
-      if (!items || items.length === 0) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
-      
-      currentItem = items[0];
+    const items = await runQuery(
+      `SELECT * FROM Item WHERE id = ?`,
+      [itemId]
+    );
+    
+    if (!items || items.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
     }
+    
+    const currentItem = items[0];
     
     // If purchased wasn't provided in request body, toggle the current value
     const newPurchasedState = purchased !== undefined ? purchased : !currentItem.purchased;
     
-    try {
-      const updatedItem = await prisma.item.update({
-        where: { id: itemId },
-        data: { purchased: newPurchasedState },
-      });
-      
-      return res.json(updatedItem);
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      await new Promise((resolve, reject) => {
-        db.run(
-          `UPDATE Item SET purchased = ? WHERE id = ?`,
-          [newPurchasedState ? 1 : 0, itemId],
-          function(err) {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
+    // Update using SQLite directly
+    await new Promise((resolve, reject) => {
+      db.run(
+        `UPDATE Item SET purchased = ? WHERE id = ?`,
+        [newPurchasedState ? 1 : 0, itemId],
+        function(err) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
           }
-        );
-      });
-      
-      const updatedItem = await runQuery(
-        `SELECT * FROM Item WHERE id = ?`,
-        [itemId]
+        }
       );
-      
-      return res.json(updatedItem[0]);
-    }
+    });
+    
+    const updatedItem = await runQuery(
+      `SELECT * FROM Item WHERE id = ?`,
+      [itemId]
+    );
+    
+    return res.json(updatedItem[0]);
   } catch (error) {
     console.error('Error updating item:', error);
     res.status(500).json({ error: 'Failed to update item' });
@@ -412,28 +388,14 @@ const getItemById = async (req, res) => {
     const { id } = req.params;
     const itemId = parseInt(id);
     
-    try {
-      const item = await prisma.item.findUnique({
-        where: { id: itemId },
-      });
-      
-      if (!item) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
-      
-      return res.json(item);
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      const items = await runQuery(`SELECT * FROM Item WHERE id = ?`, [itemId]);
-      
-      if (!items || items.length === 0) {
-        return res.status(404).json({ error: 'Item not found' });
-      }
-      
-      return res.json(items[0]);
+    // Skip Prisma and use SQLite directly to avoid errors
+    const items = await runQuery(`SELECT * FROM Item WHERE id = ?`, [itemId]);
+    
+    if (!items || items.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
     }
+    
+    return res.json(items[0]);
   } catch (error) {
     console.error('Error fetching item:', error);
     res.status(500).json({ error: 'Failed to fetch item' });
