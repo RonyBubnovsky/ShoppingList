@@ -1,23 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
 const path = require('path');
 require('dotenv').config();
 
 const itemRoutes = require('./routes/itemRoutes');
 const parseRoutes = require('./routes/parseRoutes');
-
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    process.exit(1);
-  }
-};
+const { connectDB, gracefulShutdown } = require('./utils/database');
 
 // Connect to the database
 connectDB();
@@ -46,13 +34,4 @@ app.listen(PORT, () => {
 });
 
 // Handle graceful shutdown
-process.on('SIGINT', async () => {
-  try {
-    await mongoose.connection.close();
-    console.log('MongoDB connection closed.');
-    process.exit(0);
-  } catch (e) {
-    console.error('Error during graceful shutdown:', e);
-    process.exit(1);
-  }
-});
+process.on('SIGINT', gracefulShutdown);
