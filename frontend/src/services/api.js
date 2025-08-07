@@ -38,6 +38,18 @@ export const itemsApi = {
     return response.data;
   },
   
+  // Parse free text and add item to the shopping list
+  parseAndAddItem: async (text) => {
+    const response = await api.post('/parse/add', { text });
+    return response.data;
+  },
+  
+  // Just parse free text without adding to the shopping list
+  parseItemOnly: async (text) => {
+    const response = await api.post('/parse', { text });
+    return response.data;
+  },
+  
   // Delete a single item by ID
   deleteItem: async (id) => {
     const response = await api.delete(`/items/${id}`);

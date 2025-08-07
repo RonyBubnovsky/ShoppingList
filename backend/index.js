@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 const itemRoutes = require('./routes/itemRoutes');
+const parseRoutes = require('./routes/parseRoutes');
 
 // Initialize Prisma Client with logging
 const prisma = new PrismaClient({
@@ -77,9 +78,11 @@ const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CR
   }
 });
 
-// Pass the database connection to the items controller
+// Pass the database connection to the controllers
 const itemsController = require('./controllers/itemsController');
+const parseController = require('./controllers/parseController');
 itemsController.setDatabase(db);
+parseController.setDatabase(db);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -90,6 +93,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/items', itemRoutes);
+app.use('/api/parse', parseRoutes);
 
 // Handle categories at the frontend level now
 app.get('/api/categories', (req, res) => {
