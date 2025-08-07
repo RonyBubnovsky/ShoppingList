@@ -131,9 +131,9 @@ function ShoppingList() {
   };
 
   // Toggle purchased status of an item
-  const handleTogglePurchased = async (id, purchased) => {
+  const handleTogglePurchased = async (id) => {
     try {
-      const updatedItem = await itemsApi.toggleItemPurchased(id, purchased);
+      const updatedItem = await itemsApi.toggleItemPurchased(id);
       setItems(items.map(item => (
         item.id === id ? updatedItem : item
       )));

@@ -5,6 +5,9 @@ const itemsController = require('../controllers/itemsController');
 // Get all items
 router.get('/', itemsController.getAllItems);
 
+// Get a single item by ID
+router.get('/:id', itemsController.getItemById);
+
 // Add a new item
 router.post('/', itemsController.addItem);
 

@@ -45,8 +45,13 @@ export const itemsApi = {
   },
   
   // Toggle purchased status of an item
-  toggleItemPurchased: async (id, purchased) => {
-    const response = await api.patch(`/items/${id}/purchase`, { purchased });
+  toggleItemPurchased: async (id) => {
+    // Get current item first to toggle its purchased state
+    const currentItemResponse = await api.get(`/items/${id}`);
+    const currentItem = currentItemResponse.data;
+    const newPurchasedState = !currentItem.purchased;
+    
+    const response = await api.patch(`/items/${id}/purchase`, { purchased: newPurchasedState });
     return response.data;
   },
   

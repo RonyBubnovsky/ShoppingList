@@ -204,17 +204,45 @@ const deleteItem = async (req, res) => {
   }
 };
 
-// Mark item as purchased
+// Toggle item purchased status
 const toggleItemPurchased = async (req, res) => {
   try {
     const { id } = req.params;
     const { purchased } = req.body;
     const itemId = parseInt(id);
     
+    // Get the current item to determine its current state if needed
+    let currentItem;
+    try {
+      currentItem = await prisma.item.findUnique({
+        where: { id: itemId },
+      });
+      
+      if (!currentItem) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+    } catch (prismaError) {
+      console.error('Prisma error getting current item, falling back to SQLite:', prismaError);
+      
+      const items = await runQuery(
+        `SELECT * FROM Item WHERE id = ?`,
+        [itemId]
+      );
+      
+      if (!items || items.length === 0) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+      
+      currentItem = items[0];
+    }
+    
+    // If purchased wasn't provided in request body, toggle the current value
+    const newPurchasedState = purchased !== undefined ? purchased : !currentItem.purchased;
+    
     try {
       const updatedItem = await prisma.item.update({
         where: { id: itemId },
-        data: { purchased },
+        data: { purchased: newPurchasedState },
       });
       
       return res.json(updatedItem);
@@ -225,7 +253,7 @@ const toggleItemPurchased = async (req, res) => {
       await new Promise((resolve, reject) => {
         db.run(
           `UPDATE Item SET purchased = ? WHERE id = ?`,
-          [purchased ? 1 : 0, itemId],
+          [newPurchasedState ? 1 : 0, itemId],
           function(err) {
             if (err) {
               reject(err);
@@ -378,9 +406,44 @@ const getItemStats = async (req, res) => {
   }
 };
 
+// Get a single item by ID
+const getItemById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const itemId = parseInt(id);
+    
+    try {
+      const item = await prisma.item.findUnique({
+        where: { id: itemId },
+      });
+      
+      if (!item) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+      
+      return res.json(item);
+    } catch (prismaError) {
+      console.error('Prisma error, falling back to SQLite:', prismaError);
+      
+      // Fallback to direct SQLite
+      const items = await runQuery(`SELECT * FROM Item WHERE id = ?`, [itemId]);
+      
+      if (!items || items.length === 0) {
+        return res.status(404).json({ error: 'Item not found' });
+      }
+      
+      return res.json(items[0]);
+    }
+  } catch (error) {
+    console.error('Error fetching item:', error);
+    res.status(500).json({ error: 'Failed to fetch item' });
+  }
+};
+
 module.exports = {
   setDatabase,
   getAllItems,
+  getItemById,
   addItem,
   deleteItem,
   toggleItemPurchased,
