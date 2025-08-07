@@ -10,8 +10,23 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // Initialize the Google Generative AI client
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-// Use the most reliable model
-const MODEL_NAME = "gemini-2.0-flash";
+// Models to try in order (fallback sequence)
+const MODEL_OPTIONS = [
+  "gemini-2.0-flash",
+  "gemini-2.5-flash-preview-04-17",
+  "gemini-2.5-pro-preview-03-25",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash-8b",
+  "gemma-3-1b-it",
+  "gemma-3-4b-it",
+  "gemma-3-12b-it",
+  "gemma-3-27b-it",
+  "gemma-2-2b-it",
+  "gemma-2-9b-it",
+  "gemma-2-27b-it"
+];
 
 /**
  * Parse free-text shopping list using Gemini API
@@ -22,64 +37,76 @@ async function parseItemText(text) {
   try {
     console.log(`Trying to parse shopping text: "${text}"`);
     
-    // Get the model
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    // Try each model in sequence until one works
+    for (const modelName of MODEL_OPTIONS) {
+      try {
+        console.log(`Trying to parse with model: ${modelName}`);
+        const model = genAI.getGenerativeModel({ model: modelName });
     
-    // Combine the prompt template with the user's text
-    const fullPrompt = `${itemParsingPrompt}\n\nInput: "${text}"`;
-    
-    // Generate content with the prompt
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    const responseText = response.text().trim();
-    
-    console.log("Raw API response:", responseText);
-    
-    // Extract JSON array from the response text
-    let jsonString = responseText;
-    
-    // Try to extract the JSON array from the response
-    const arrayMatch = responseText.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      jsonString = arrayMatch[0];
-      console.log("Extracted JSON array:", jsonString);
-    } else {
-      // If not found as array, try to extract a single object and wrap it
-      const objectMatch = responseText.match(/{[\s\S]*?}/);
-      if (objectMatch) {
-        jsonString = `[${objectMatch[0]}]`;
-        console.log("Extracted single JSON object and wrapped as array:", jsonString);
+        // Combine the prompt template with the user's text
+        const fullPrompt = `${itemParsingPrompt}\n\nInput: "${text}"`;
+        
+        // Generate content with the prompt
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const responseText = response.text().trim();
+        
+        console.log("Raw API response:", responseText);
+        
+        // Extract JSON array from the response text
+        let jsonString = responseText;
+        
+        // Try to extract the JSON array from the response
+        const arrayMatch = responseText.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          jsonString = arrayMatch[0];
+          console.log("Extracted JSON array:", jsonString);
+        } else {
+          // If not found as array, try to extract a single object and wrap it
+          const objectMatch = responseText.match(/{[\s\S]*?}/);
+          if (objectMatch) {
+            jsonString = `[${objectMatch[0]}]`;
+            console.log("Extracted single JSON object and wrapped as array:", jsonString);
+          }
+        }
+        
+        // Parse the JSON
+        const parsedItems = JSON.parse(jsonString);
+        
+        // Validate and apply defaults to each item
+        const allowedUnits = ["יחידה", "ק״ג", "גרם", "ליטר", "מ״ל", "חבילה", "בקבוק", "קופסה", "זוג"];
+        const allowedCategories = ["Dairy", "Meat", "Fish", "Produce", "Bakery", "Frozen", "Beverages", "Snacks", "Sweets", "Canned Goods", "Household", "Personal Care", "Grains"];
+        
+        const validatedItems = parsedItems.map(item => {
+          // Apply defaults and validate
+          if (!item.quantity || isNaN(item.quantity)) item.quantity = 1;
+          
+          // Ensure unit is from our allowed list
+          if (!item.unit || !allowedUnits.includes(item.unit)) {
+            console.log(`Unit '${item.unit}' not in allowed list, defaulting to 'יחידה'`);
+            item.unit = "יחידה";
+          }
+          
+          // Ensure category is valid
+          if (!item.category || !allowedCategories.includes(item.category)) {
+            console.log(`Category '${item.category}' not in allowed list, defaulting to 'Produce'`);
+            item.category = "Produce";
+          }
+          
+          return item;
+        });
+        
+        console.log(`Successfully parsed ${validatedItems.length} items with model ${modelName}`);
+        return validatedItems;
+      } catch (error) {
+        // If this model fails, log the error and try the next one
+        console.error(`Error with model ${modelName}: ${error.message}`);
+        // Continue to next model
       }
     }
     
-    // Parse the JSON
-    const parsedItems = JSON.parse(jsonString);
-    
-    // Validate and apply defaults to each item
-    const allowedUnits = ["יחידה", "ק״ג", "גרם", "ליטר", "מ״ל", "חבילה", "בקבוק", "קופסה", "זוג"];
-    const allowedCategories = ["Dairy", "Meat", "Fish", "Produce", "Bakery", "Frozen", "Beverages", "Snacks", "Sweets", "Canned Goods", "Household", "Personal Care", "Grains"];
-    
-    const validatedItems = parsedItems.map(item => {
-      // Apply defaults and validate
-      if (!item.quantity || isNaN(item.quantity)) item.quantity = 1;
-      
-      // Ensure unit is from our allowed list
-      if (!item.unit || !allowedUnits.includes(item.unit)) {
-        console.log(`Unit '${item.unit}' not in allowed list, defaulting to 'יחידה'`);
-        item.unit = "יחידה";
-      }
-      
-      // Ensure category is valid
-      if (!item.category || !allowedCategories.includes(item.category)) {
-        console.log(`Category '${item.category}' not in allowed list, defaulting to 'Produce'`);
-        item.category = "Produce";
-      }
-      
-      return item;
-    });
-    
-    console.log(`Successfully parsed ${validatedItems.length} items`);
-    return validatedItems;
+    // If we get here, all models failed, fall back to local parser
+    console.log("All models failed, falling back to local parsing");
   } catch (error) {
     console.error("API error:", error.message);
     

@@ -1,6 +1,6 @@
 # Shopping List App
 
-A simple shopping list application I built for my parents to help them manage grocery shopping more efficiently. The app makes it easy to create and manage shopping lists, track purchased items, and organize products by categories.
+A simple shopping list application I built for my parents to help them manage grocery shopping more efficiently. The app makes it easy to create and manage shopping lists, track purchased items, and organize products by categories. It features AI-powered text analysis that lets my parents easily add multiple items by typing natural language descriptions.
 
 ## Features
 
@@ -10,6 +10,7 @@ A simple shopping list application I built for my parents to help them manage gr
 - Filter items by name or category
 - View statistics of purchased/remaining items
 - Mobile-friendly design with RTL (right-to-left) support
+- AI-powered item parsing using Google Gemini API (add multiple items with plain text)
 
 ## Project Structure
 
@@ -25,6 +26,8 @@ ShoppingList/
     ├── controllers/     # Business logic
     ├── routes/          # API routes
     ├── prisma/          # Database schema and migrations
+    ├── services/        # External services like Gemini API
+    ├── prompts/         # AI prompt templates
     └── ...
 ```
 
@@ -40,6 +43,7 @@ ShoppingList/
 - Express
 - Prisma ORM
 - SQLite
+- Google Gemini API
 
 ## Getting Started
 
@@ -60,6 +64,7 @@ ShoppingList/
    ```
    PORT=5000
    DATABASE_URL="file:./prisma/dev.db"
+   GEMINI_API_KEY="your_gemini_api_key_here"
    ```
 
 4. Run the application:

@@ -43,6 +43,9 @@ function AddItemForm({ onItemAdded }) {
       <div className="free-text-hint">
         <FaMagic /> הכנס פריט בטקסט חופשי, לדוגמה: "עגבניות 3 ק״ג" או "5 ביצים" או "חלב 2 ליטר"
       </div>
+      <div className="free-text-hint multi-item-hint">
+        <FaMagic /> ניתן להוסיף מספר פריטים בבת אחת! לדוגמה: "עגבניות 3 ק״ג, חלב 2 ליטר, לחם"
+      </div>
       <form onSubmit={handleSubmit}>
         <div className="free-text-form">
           <div className="form-group-free-text">
@@ -52,7 +55,7 @@ function AddItemForm({ onItemAdded }) {
               name="freeText"
               value={freeText}
               onChange={handleChange}
-              placeholder="הכנס פריט בטקסט חופשי..."
+              placeholder="הכנס פריט או רשימת פריטים מופרדים בפסיקים..."
               required
               className="form-input form-input-free-text"
               dir="rtl"

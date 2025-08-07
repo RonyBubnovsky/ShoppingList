@@ -30,7 +30,7 @@
 .free-text-hint {
   display: flex;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
   font-size: 0.9rem;
   color: var(--text-light);
   font-style: italic;
@@ -39,6 +39,12 @@
 .free-text-hint svg {
   margin-left: var(--spacing-sm);
   color: var(--primary-color);
+}
+
+.multi-item-hint {
+  color: var(--primary-dark);
+  font-weight: 500;
+  margin-bottom: var(--spacing-md);
 }
 
 .form-grid {
