@@ -1,8 +1,8 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require('dotenv').config();
 
-// No longer need to import the prompt file
-// const itemParsingPrompt = require('../prompts/itemParsingPrompt');
+// Import the prompt template
+const itemParsingPrompt = require('../prompts/itemParsingPrompt');
 
 // Gemini API key from environment variables
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -14,95 +14,134 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const MODEL_NAME = "gemini-2.0-flash";
 
 /**
- * Parse a free-text item description using Gemini API
- * @param {string} text - The free-text item description
- * @returns {Promise<Object>} - Parsed item data
+ * Parse free-text shopping list using Gemini API
+ * @param {string} text - The free-text shopping list or item
+ * @returns {Promise<Array<Object>>} - Array of parsed items
  */
 async function parseItemText(text) {
   try {
-    console.log(`Trying to parse text: "${text}"`);
+    console.log(`Trying to parse shopping text: "${text}"`);
     
-    // Build the prompt
-    const prompt = `
-    Parse this shopping item description into a JSON object with these fields:
-    - name: the item name in Hebrew
-    - quantity: a number (default to 1 if not specified)
-    - unit: the unit in Hebrew - MUST be one of these exact values: יחידה, ק״ג, גרם, ליטר, מ״ל, חבילה, בקבוק, קופסה, זוג (default to יחידה if uncertain)
-    - category: one of these English categories: Dairy, Meat, Fish, Produce, Bakery, Frozen, Beverages, Snacks, Sweets, Canned Goods, Household, Personal Care, Grains
-
-    You MUST map any non-standard units to the closest standard unit from the list above.
-    For example, "חתיכות", "פיסות", "פרוסות", etc. should all be mapped to "יחידה".
-    "בקבוקים" should be mapped to "בקבוק".
-    "קופסאות" should be mapped to "קופסה".
-
-    For example:
-    If input is "חלב 2 ליטר", output: {"name":"חלב","quantity":2,"unit":"ליטר","category":"Dairy"}
-    If input is "5 תפוחים", output: {"name":"תפוחים","quantity":5,"unit":"יחידה","category":"Produce"}
-    If input is "עגבניות 3 ק״ג", output: {"name":"עגבניות","quantity":3,"unit":"ק״ג","category":"Produce"}
-    If input is "שוקולד 3 חתיכות", output: {"name":"שוקולד","quantity":3,"unit":"יחידה","category":"Sweets"}
-    If input is "קולה 6 בקבוקים", output: {"name":"קולה","quantity":6,"unit":"בקבוק","category":"Beverages"}
-
-    Now parse: "${text}"
-    `;
-
     // Get the model
     const model = genAI.getGenerativeModel({ model: MODEL_NAME });
     
+    // Combine the prompt template with the user's text
+    const fullPrompt = `${itemParsingPrompt}\n\nInput: "${text}"`;
+    
     // Generate content with the prompt
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const responseText = response.text().trim();
     
     console.log("Raw API response:", responseText);
     
-    // Extract JSON object from the response text
+    // Extract JSON array from the response text
     let jsonString = responseText;
     
-    // If the response includes explanation text, try to extract just the JSON part
-    const jsonMatch = responseText.match(/{[\s\S]*?}/);
-    if (jsonMatch) {
-      jsonString = jsonMatch[0];
-      console.log("Extracted JSON:", jsonString);
+    // Try to extract the JSON array from the response
+    const arrayMatch = responseText.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      jsonString = arrayMatch[0];
+      console.log("Extracted JSON array:", jsonString);
+    } else {
+      // If not found as array, try to extract a single object and wrap it
+      const objectMatch = responseText.match(/{[\s\S]*?}/);
+      if (objectMatch) {
+        jsonString = `[${objectMatch[0]}]`;
+        console.log("Extracted single JSON object and wrapped as array:", jsonString);
+      }
     }
     
     // Parse the JSON
-    const parsedData = JSON.parse(jsonString);
+    const parsedItems = JSON.parse(jsonString);
     
-    // Apply defaults and validate unit against allowed list
-    if (!parsedData.quantity) parsedData.quantity = 1;
-    
-    // Ensure unit is from our allowed list
+    // Validate and apply defaults to each item
     const allowedUnits = ["יחידה", "ק״ג", "גרם", "ליטר", "מ״ל", "חבילה", "בקבוק", "קופסה", "זוג"];
-    if (!parsedData.unit || !allowedUnits.includes(parsedData.unit)) {
-      console.log(`Unit '${parsedData.unit}' not in allowed list, defaulting to 'יחידה'`);
-      parsedData.unit = "יחידה";
-    }
+    const allowedCategories = ["Dairy", "Meat", "Fish", "Produce", "Bakery", "Frozen", "Beverages", "Snacks", "Sweets", "Canned Goods", "Household", "Personal Care", "Grains"];
     
-    if (!parsedData.category) parsedData.category = "Produce";
+    const validatedItems = parsedItems.map(item => {
+      // Apply defaults and validate
+      if (!item.quantity || isNaN(item.quantity)) item.quantity = 1;
+      
+      // Ensure unit is from our allowed list
+      if (!item.unit || !allowedUnits.includes(item.unit)) {
+        console.log(`Unit '${item.unit}' not in allowed list, defaulting to 'יחידה'`);
+        item.unit = "יחידה";
+      }
+      
+      // Ensure category is valid
+      if (!item.category || !allowedCategories.includes(item.category)) {
+        console.log(`Category '${item.category}' not in allowed list, defaulting to 'Produce'`);
+        item.category = "Produce";
+      }
+      
+      return item;
+    });
     
-    return parsedData;
+    console.log(`Successfully parsed ${validatedItems.length} items`);
+    return validatedItems;
   } catch (error) {
     console.error("API error:", error.message);
     
-    // If API fails, use the simple local parser as fallback
-    return simpleLocalParser(text);
+    // If API fails, use the local parser as fallback
+    return parseLocalWithFallback(text);
   }
 }
 
 /**
- * Simple local parser for basic text input when all models fail
+ * Parse a shopping list locally when API fails
+ * @param {string} text - The shopping list text
+ * @returns {Array<Object>} - Array of parsed items
+ */
+function parseLocalWithFallback(text) {
+  console.log("Using local parser for shopping list:", text);
+  
+  // First, split the text into individual items
+  const itemTexts = splitShoppingList(text);
+  console.log(`Split into ${itemTexts.length} items:`, itemTexts);
+  
+  // Parse each item individually and return an array
+  return itemTexts.map(itemText => simpleLocalParser(itemText));
+}
+
+/**
+ * Split shopping list text into individual items
+ * @param {string} text - The shopping list text
+ * @returns {Array<string>} - Array of item texts
+ */
+function splitShoppingList(text) {
+  // If the text is empty or undefined, return empty array
+  if (!text || !text.trim()) {
+    return [];
+  }
+  
+  // First try to split by new lines
+  const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+  
+  // If we got multiple lines, return them
+  if (lines.length > 1) {
+    return lines;
+  }
+  
+  // Otherwise, try to split by commas or semicolons
+  const items = text.split(/[,;]/).filter(item => item.trim().length > 0);
+  return items;
+}
+
+/**
+ * Simple local parser for a single item when API fails
  * @param {string} text - The text to parse
  * @returns {Object} - Structured item data
  */
 function simpleLocalParser(text) {
-  console.log("Using local parser for:", text);
+  console.log("Using local parser for item:", text);
   
   // Default values
   const result = {
     name: "",
     quantity: 1,
     unit: "יחידה",
-    category: "Produce"
+    category: "Produce" // Default to produce as it's common
   };
   
   // Clean up input

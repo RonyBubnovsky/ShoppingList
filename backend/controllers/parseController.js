@@ -38,133 +38,152 @@ const parseAndAddItem = async (req, res) => {
       return res.status(400).json({ error: 'Text is required' });
     }
     
-    // Parse the free text using Gemini API
-    const parsedItem = await parseItemText(text);
+    // Parse the free text using Gemini API - now returns array of items
+    const parsedItems = await parseItemText(text);
     
-    // Extract the parsed data
-    const { name, quantity, unit, category } = parsedItem;
-    const parsedQuantity = parseInt(quantity);
+    // Process multiple items if needed
+    if (parsedItems.length === 0) {
+      return res.status(400).json({ error: 'Could not parse any items from the text' });
+    }
     
-    // Try with Prisma first
-    try {
-      // Check if same item already exists (same name, unit and category)
-      const existingItem = await prisma.item.findFirst({
-        where: {
-          name: name,
-          unit: unit,
-          category: category,
-        }
-      });
-      
-      // If item exists, update quantity instead of creating new one
-      if (existingItem) {
-        const updatedItem = await prisma.item.update({
-          where: { id: existingItem.id },
-          data: {
-            quantity: existingItem.quantity + parsedQuantity
+    // If multiple items, process them sequentially
+    const results = [];
+    
+    for (const parsedItem of parsedItems) {
+      // Extract the parsed data for current item
+      const { name, quantity, unit, category } = parsedItem;
+      const parsedQuantity = parseInt(quantity);
+    
+      // Try with Prisma first
+      try {
+        // Check if same item already exists (same name, unit and category)
+        const existingItem = await prisma.item.findFirst({
+          where: {
+            name: name,
+            unit: unit,
+            category: category,
           }
         });
         
-        return res.status(200).json({
-          ...updatedItem,
-          parsed: parsedItem,
-          originalText: text
-        });
-      }
-      
-      // Item doesn't exist, create new one
-      const newItem = await prisma.item.create({
-        data: {
-          name,
-          quantity: parsedQuantity,
-          unit,
-          category,
-          purchased: false,
-        },
-      });
-      
-      return res.status(201).json({
-        ...newItem,
-        parsed: parsedItem,
-        originalText: text
-      });
-    } catch (prismaError) {
-      console.error('Prisma error, falling back to SQLite:', prismaError);
-      
-      // Fallback to direct SQLite
-      try {
-        // Check if same item already exists
-        const existingItems = await runQuery(
-          `SELECT * FROM Item WHERE name = ? AND unit = ? AND category = ?`,
-          [name, unit, category]
-        );
-        
-        if (existingItems && existingItems.length > 0) {
-          // Item exists, update quantity
-          const existingItem = existingItems[0];
-          const newQuantity = existingItem.quantity + parsedQuantity;
-          
-          await new Promise((resolve, reject) => {
-            db.run(
-              `UPDATE Item SET quantity = ? WHERE id = ?`,
-              [newQuantity, existingItem.id],
-              function(err) {
-                if (err) {
-                  reject(err);
-                } else {
-                  resolve();
-                }
-              }
-            );
+        // If item exists, update quantity instead of creating new one
+        if (existingItem) {
+          const updatedItem = await prisma.item.update({
+            where: { id: existingItem.id },
+            data: {
+              quantity: existingItem.quantity + parsedQuantity
+            }
           });
           
-          // Get updated item
-          const updatedItems = await runQuery(
-            `SELECT * FROM Item WHERE id = ?`,
-            [existingItem.id]
-          );
-          
-          return res.status(200).json({
-            ...updatedItems[0],
+          results.push({
+            ...updatedItem,
             parsed: parsedItem,
-            originalText: text
+            action: "updated"
           });
         } else {
           // Item doesn't exist, create new one
-          const result = await new Promise((resolve, reject) => {
-            db.run(
-              `INSERT INTO Item (name, quantity, unit, category, purchased) 
-               VALUES (?, ?, ?, ?, ?)`,
-              [name, parsedQuantity, unit, category, false],
-              function(err) {
-                if (err) {
-                  reject(err);
-                } else {
-                  db.get(`SELECT * FROM Item WHERE id = ?`, [this.lastID], (err, row) => {
-                    if (err) {
-                      reject(err);
-                    } else {
-                      resolve(row);
-                    }
-                  });
-                }
-              }
-            );
+          const newItem = await prisma.item.create({
+            data: {
+              name,
+              quantity: parsedQuantity,
+              unit,
+              category,
+              purchased: false,
+            },
           });
           
-          return res.status(201).json({
-            ...result,
+          results.push({
+            ...newItem,
             parsed: parsedItem,
-            originalText: text
+            action: "created"
           });
         }
-      } catch (sqliteError) {
-        throw sqliteError;
+      } catch (prismaError) {
+        console.error('Prisma error, falling back to SQLite:', prismaError);
+        
+        // Fallback to direct SQLite
+        try {
+          // Check if same item already exists
+          const existingItems = await runQuery(
+            `SELECT * FROM Item WHERE name = ? AND unit = ? AND category = ?`,
+            [name, unit, category]
+          );
+          
+          if (existingItems && existingItems.length > 0) {
+            // Item exists, update quantity
+            const existingItem = existingItems[0];
+            const newQuantity = existingItem.quantity + parsedQuantity;
+            
+            await new Promise((resolve, reject) => {
+              db.run(
+                `UPDATE Item SET quantity = ? WHERE id = ?`,
+                [newQuantity, existingItem.id],
+                function(err) {
+                  if (err) {
+                    reject(err);
+                  } else {
+                    resolve();
+                  }
+                }
+              );
+            });
+            
+            // Get updated item
+            const updatedItems = await runQuery(
+              `SELECT * FROM Item WHERE id = ?`,
+              [existingItem.id]
+            );
+            
+            results.push({
+              ...updatedItems[0],
+              parsed: parsedItem,
+              action: "updated"
+            });
+          } else {
+            // Item doesn't exist, create new one
+            const result = await new Promise((resolve, reject) => {
+              db.run(
+                `INSERT INTO Item (name, quantity, unit, category, purchased) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [name, parsedQuantity, unit, category, false],
+                function(err) {
+                  if (err) {
+                    reject(err);
+                  } else {
+                    db.get(`SELECT * FROM Item WHERE id = ?`, [this.lastID], (err, row) => {
+                      if (err) {
+                        reject(err);
+                      } else {
+                        resolve(row);
+                      }
+                    });
+                  }
+                }
+              );
+            });
+            
+            results.push({
+              ...result,
+              parsed: parsedItem,
+              action: "created"
+            });
+          }
+        } catch (sqliteError) {
+          throw sqliteError;
+        }
       }
     }
+    
+    // Return success with all results
+    return res.status(200).json({
+      success: true,
+      items: results,
+      originalText: text,
+      count: results.length
+    });
+    
   } catch (error) {
-    console.error('Error parsing and creating/updating item:', error);
-    res.status(500).json({ error: `Failed to parse and add item: ${error.message}` });
+    console.error('Error parsing and creating/updating items:', error);
+    res.status(500).json({ error: `Failed to parse and add items: ${error.message}` });
   }
 };
 
@@ -181,12 +200,14 @@ const parseItemOnly = async (req, res) => {
       return res.status(400).json({ error: 'Text is required' });
     }
     
-    // Parse the free text using Gemini API
-    const parsedItem = await parseItemText(text);
+    // Parse the free text using Gemini API (now returns array of items)
+    const parsedItems = await parseItemText(text);
     
     return res.status(200).json({
-      parsed: parsedItem,
-      originalText: text
+      success: true,
+      items: parsedItems,
+      originalText: text,
+      count: parsedItems.length
     });
     
   } catch (error) {
