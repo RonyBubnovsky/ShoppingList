@@ -168,7 +168,7 @@ const getItemStats = async (req, res) => {
     res.json({
       total: totalItems,
       purchased: purchasedItems,
-      remaining: remainingItems
+      unpurchased: remainingItems
     });
   } catch (error) {
     console.error('Error fetching item statistics:', error);
