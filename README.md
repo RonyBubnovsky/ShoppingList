@@ -11,6 +11,7 @@ A simple shopping list application I built for my parents to help them manage gr
 - View statistics of purchased/remaining items
 - Mobile-friendly design with RTL (right-to-left) support
 - AI-powered item parsing using Google Gemini API (add multiple items with plain text)
+- Product images automatically fetched via Pexels API
 
 ## Project Structure
 
@@ -44,6 +45,7 @@ ShoppingList/
 - Prisma ORM
 - SQLite
 - Google Gemini API
+- Pexels API
 
 ## Getting Started
 
@@ -65,6 +67,7 @@ ShoppingList/
    PORT=5000
    DATABASE_URL="file:./prisma/dev.db"
    GEMINI_API_KEY="your_gemini_api_key_here"
+   PEXELS_API="your_pexels_api_key_here"
    ```
 
 4. Run the application:

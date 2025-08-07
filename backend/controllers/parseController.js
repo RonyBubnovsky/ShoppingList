@@ -1,4 +1,5 @@
 const { parseItemText } = require('../services/geminiService');
+const { getItemImage } = require('../services/imageService');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   log: ['error'],
@@ -53,6 +54,9 @@ const parseAndAddItem = async (req, res) => {
       // Extract the parsed data for current item
       const { name, quantity, unit, category } = parsedItem;
       const parsedQuantity = parseInt(quantity);
+      
+      // חיפוש תמונה לפריט
+      const imageUrl = await getItemImage(name);
     
       // Try with Prisma first
       try {
@@ -70,7 +74,9 @@ const parseAndAddItem = async (req, res) => {
           const updatedItem = await prisma.item.update({
             where: { id: existingItem.id },
             data: {
-              quantity: existingItem.quantity + parsedQuantity
+              quantity: existingItem.quantity + parsedQuantity,
+              // עדכון URL התמונה רק אם יש חדש ואין קיים
+              imageUrl: existingItem.imageUrl || imageUrl
             }
           });
           
@@ -88,6 +94,7 @@ const parseAndAddItem = async (req, res) => {
               unit,
               category,
               purchased: false,
+              imageUrl,
             },
           });
           
@@ -115,8 +122,11 @@ const parseAndAddItem = async (req, res) => {
             
             await new Promise((resolve, reject) => {
               db.run(
-                `UPDATE Item SET quantity = ? WHERE id = ?`,
-                [newQuantity, existingItem.id],
+                `UPDATE Item SET quantity = ?, imageUrl = COALESCE(
+                  (SELECT imageUrl FROM Item WHERE id = ? AND imageUrl IS NOT NULL), 
+                  ?, 
+                  (SELECT imageUrl FROM Item WHERE id = ?))`,
+                [newQuantity, existingItem.id, imageUrl, existingItem.id],
                 function(err) {
                   if (err) {
                     reject(err);
@@ -142,9 +152,9 @@ const parseAndAddItem = async (req, res) => {
             // Item doesn't exist, create new one
             const result = await new Promise((resolve, reject) => {
               db.run(
-                `INSERT INTO Item (name, quantity, unit, category, purchased) 
-                 VALUES (?, ?, ?, ?, ?)`,
-                [name, parsedQuantity, unit, category, false],
+                `INSERT INTO Item (name, quantity, unit, category, purchased, imageUrl) 
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [name, parsedQuantity, unit, category, false, imageUrl],
                 function(err) {
                   if (err) {
                     reject(err);

@@ -44,14 +44,45 @@ function ShoppingItem({
       </div>
 
       <div className="item-info">
-        <span className="item-name">{item.name}</span>
-        <span className="item-details">
-          <span className="item-category">
+        {item.imageUrl ? (
+          <div className="item-image-container">
+            <div className="loading-spinner"></div>
+            <img 
+              src={item.imageUrl} 
+              alt={item.name} 
+              className="item-image"
+              onLoad={(e) => {
+                // Hide loading spinner when image loads
+                e.target.previousElementSibling.style.display = 'none';
+                e.target.style.opacity = '1';
+              }}
+              onError={(e) => {
+                // Hide loading spinner and failed image
+                e.target.previousElementSibling.style.display = 'none';
+                e.target.style.display = 'none';
+                // Show category icon as fallback
+                e.target.nextElementSibling.style.display = 'flex';
+              }} 
+              style={{ opacity: '0' }}
+            />
+            <div className="item-category-fallback" style={{ display: 'none' }}>
+              {React.createElement(CATEGORY_ICONS[item.category], { className: 'category-icon-fallback' })}
+            </div>
+          </div>
+        ) : (
+          <div className="item-category">
             {React.createElement(CATEGORY_ICONS[item.category], { className: 'category-icon' })}
-            {CATEGORY_TRANSLATIONS[item.category] || item.category}
+          </div>
+        )}
+        <div className="item-text-details">
+          <span className="item-name">{item.name}</span>
+          <span className="item-details">
+            <span className="item-category-text">
+              {CATEGORY_TRANSLATIONS[item.category] || item.category}
+            </span>
+            {item.quantity} {item.unit}
           </span>
-          {item.quantity} {item.unit}
-        </span>
+        </div>
       </div>
 
       <div className="item-actions">
