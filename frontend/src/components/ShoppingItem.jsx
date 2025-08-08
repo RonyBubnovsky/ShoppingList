@@ -7,7 +7,9 @@ function ShoppingItem({
   onDelete, 
   onTogglePurchased, 
   onSelectItem, 
-  isSelected 
+  isSelected,
+  showPurchaseButton = true,
+  showDeleteButton = true
 }) {
   const [isLoading, setIsLoading] = useState({
     toggle: false,
@@ -100,28 +102,32 @@ function ShoppingItem({
       </div>
 
       <div className="item-actions">
-        <button 
-          className={`action-btn ${item.purchased ? 'unpurchase' : 'check'} ${isLoading.toggle ? 'loading' : ''}`} 
-          onClick={handleTogglePurchased}
-          disabled={isLoading.toggle}
-          aria-label={item.purchased ? "סמן כלא נקנה" : "סמן כנקנה"}
-        >
-          {isLoading.toggle ? 
-            <FaSpinner className="spinner" /> : 
-            (item.purchased ? <FaUndo /> : <FaCheck />)
-          }
-        </button>
-        <button 
-          className={`action-btn delete ${isLoading.delete ? 'loading' : ''}`}
-          onClick={handleDelete}
-          disabled={isLoading.delete}
-          aria-label="מחק פריט"
-        >
-          {isLoading.delete ? 
-            <FaSpinner className="spinner" /> : 
-            <FaTrash />
-          }
-        </button>
+        {showPurchaseButton && (
+          <button 
+            className={`action-btn ${item.purchased ? 'unpurchase' : 'check'} ${isLoading.toggle ? 'loading' : ''}`} 
+            onClick={handleTogglePurchased}
+            disabled={isLoading.toggle}
+            aria-label={item.purchased ? "סמן כלא נקנה" : "סמן כנקנה"}
+          >
+            {isLoading.toggle ? 
+              <FaSpinner className="spinner" /> : 
+              (item.purchased ? <FaUndo /> : <FaCheck />)
+            }
+          </button>
+        )}
+        {showDeleteButton && (
+          <button 
+            className={`action-btn delete ${isLoading.delete ? 'loading' : ''}`}
+            onClick={handleDelete}
+            disabled={isLoading.delete}
+            aria-label="מחק פריט"
+          >
+            {isLoading.delete ? 
+              <FaSpinner className="spinner" /> : 
+              <FaTrash />
+            }
+          </button>
+        )}
       </div>
     </li>
   );

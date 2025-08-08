@@ -1,8 +1,11 @@
 import React from 'react';
-import { FaShoppingBasket, FaClipboardList } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
+import { FaShoppingBasket, FaClipboardList, FaHome, FaShoppingCart } from 'react-icons/fa';
 
 // Enhanced header component with icon
 function Header() {
+  const location = useLocation();
+
   return (
     <header className="app-header">
       <div className="header-bg-pattern"></div>
@@ -17,6 +20,20 @@ function Header() {
             הוסף, עקוב ונהל את פריטי הקניות שלך במקום אחד
           </p>
         </div>
+        <nav className="header-nav">
+          <ul>
+            <li className={location.pathname === '/' ? 'active' : ''}>
+              <Link to="/">
+                <FaHome /> ניהול רשימה
+              </Link>
+            </li>
+            <li className={location.pathname === '/shopping-list' ? 'active' : ''}>
+              <Link to="/shopping-list">
+                <FaShoppingCart /> רשימת קניות
+              </Link>
+            </li>
+          </ul>
+        </nav>
       </div>
     </header>
   );

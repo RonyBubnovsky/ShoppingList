@@ -1,0 +1,172 @@
+/* Pages.css */
+
+/* Common page elements */
+.back-link {
+  margin-bottom: var(--spacing-md);
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #f5f5f5;
+  color: var(--text-color);
+  border: 1px solid #ddd;
+  border-radius: var(--border-radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* Main Page */
+.items-container {
+  margin-top: var(--spacing-xl);
+}
+
+.items-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+  .items-header {
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: stretch;
+  }
+  
+  .items-header h2 {
+    text-align: center;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .header-actions {
+    justify-content: center;
+    flex-direction: row;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.save-list-btn,
+.go-shopping-btn,
+.btn-whatsapp {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: white;
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  direction: rtl;
+}
+
+@media (max-width: 576px) {
+  .modal {
+    width: 95%;
+    padding: var(--spacing-md);
+  }
+}
+
+.modal h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-start; /* Changed to flex-start for RTL */
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  direction: rtl; /* Ensure RTL order for buttons */
+}
+
+/* Items list in MainPage */
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s;
+}
+
+.item:hover {
+  background-color: var(--bg-light);
+}
+
+.item-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.item-quantity {
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.item-category {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: var(--spacing-xs);
+}
+
+.item-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.item-action-btn {
+  padding: 0.5rem;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.delete-btn {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.delete-btn:hover {
+  background-color: #ffcdd2;
+}

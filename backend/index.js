@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const itemRoutes = require('./routes/itemRoutes');
 const parseRoutes = require('./routes/parseRoutes');
+const savedListRoutes = require('./routes/savedListRoutes');
 const { connectDB, gracefulShutdown } = require('./utils/database');
 
 // Connect to the database
@@ -20,6 +21,7 @@ app.use(express.json());
 // Routes
 app.use('/api/items', itemRoutes);
 app.use('/api/parse', parseRoutes);
+app.use('/api/saved-lists', savedListRoutes);
 
 // Handle categories at the frontend level now
 app.get('/api/categories', (req, res) => {

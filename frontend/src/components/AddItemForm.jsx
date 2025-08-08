@@ -24,9 +24,42 @@ function AddItemForm({ onItemAdded }) {
     setError(null);
     
     try {
-      await itemsApi.parseAndAddItem(freeText);
+      console.log("Sending text to parse:", freeText);
+      const result = await itemsApi.parseAndAddItem(freeText);
+      console.log("Received result:", result);
       setFreeText('');
-      onItemAdded();
+      
+      // Check if there are multiple items
+      if (result && result.items && result.items.length > 0) {
+        console.log(`Parsed ${result.items.length} items`);
+        
+        // Get current items from localStorage
+        const tempItems = localStorage.getItem('tempItems');
+        let currentItems = [];
+        
+        if (tempItems) {
+          try {
+            currentItems = JSON.parse(tempItems);
+          } catch (err) {
+            console.error('Failed to parse temp items:', err);
+          }
+        }
+        
+        // Add all new items
+        const updatedItems = [...currentItems, ...result.items];
+        localStorage.setItem('tempItems', JSON.stringify(updatedItems));
+        
+        // If only one item was added, pass it directly
+        if (result.items.length === 1) {
+          onItemAdded(result.items[0]);
+        } else {
+          // For multiple items, tell parent to refresh the list
+          onItemAdded();
+        }
+      } else {
+        console.log("No items returned from API");
+        onItemAdded();
+      }
     } catch (error) {
       console.error('Error parsing and adding item:', error);
       setError('שגיאה בעיבוד הטקסט. אנא נסה שוב.');
@@ -70,7 +103,7 @@ function AddItemForm({ onItemAdded }) {
               disabled={isLoading}
             >
               {isLoading ? (
-                <span className="loading-spinner"></span>
+                <>מוסיף...</>
               ) : (
                 <>
                   <FaPlus /> הוסף לרשימה

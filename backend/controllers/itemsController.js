@@ -1,4 +1,5 @@
 const Item = require('../models/Item');
+const SavedList = require('../models/SavedList');
 
 /**
  * Get all items
@@ -58,6 +59,38 @@ const addItem = async (req, res) => {
 };
 
 /**
+ * Helper function to check and delete empty saved lists
+ */
+/**
+ * Helper function to check and update saved lists when items are deleted
+ * This removes itemId from all saved lists and deletes empty lists
+ */
+const checkAndDeleteEmptySavedLists = async (itemId) => {
+  try {
+    // Find all saved lists that contain this item
+    const savedLists = await SavedList.find({ items: itemId });
+    console.log(`Found ${savedLists.length} saved lists containing item ${itemId}`);
+    
+    for (const list of savedLists) {
+      // Remove the item from the list
+      list.items = list.items.filter(item => item.toString() !== itemId.toString());
+      
+      // If the list is now empty, delete it
+      if (list.items.length === 0) {
+        await SavedList.findByIdAndDelete(list._id);
+        console.log(`Deleted empty saved list: ${list._id}`);
+      } else {
+        // Otherwise save the updated list
+        await list.save();
+        console.log(`Updated saved list: ${list._id}, remaining items: ${list.items.length}`);
+      }
+    }
+  } catch (error) {
+    console.error('Error checking saved lists:', error);
+  }
+};
+
+/**
  * Delete an item
  * @route DELETE /api/items/:id
  */
@@ -69,6 +102,9 @@ const deleteItem = async (req, res) => {
     if (!deletedItem) {
       return res.status(404).json({ error: 'Item not found' });
     }
+    
+    // Check and delete empty saved lists
+    await checkAndDeleteEmptySavedLists(itemId);
     
     res.json({ message: 'Item deleted', id: itemId });
   } catch (error) {
@@ -113,6 +149,11 @@ const deleteMultipleItems = async (req, res) => {
     }
     
     const result = await Item.deleteMany({ _id: { $in: ids } });
+    
+    // Check and delete empty saved lists for each deleted item
+    for (const itemId of ids) {
+      await checkAndDeleteEmptySavedLists(itemId);
+    }
     
     res.json({
       message: `${result.deletedCount} items deleted`,
@@ -177,6 +218,39 @@ const getItemStats = async (req, res) => {
 };
 
 /**
+ * Get statistics for specific items by IDs
+ * @route POST /api/items/stats/by-ids
+ */
+const getItemStatsByIds = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No valid IDs provided' });
+    }
+    
+    // Find all items with the provided IDs
+    const items = await Item.find({ _id: { $in: ids } });
+    
+    // Calculate statistics
+    const totalItems = items.length;
+    const purchasedItems = items.filter(item => item.purchased).length;
+    const remainingItems = totalItems - purchasedItems;
+    
+    console.log(`Stats for ${ids.length} requested IDs: found ${totalItems} items, ${purchasedItems} purchased, ${remainingItems} remaining`);
+    
+    res.json({
+      total: totalItems,
+      purchased: purchasedItems,
+      unpurchased: remainingItems
+    });
+  } catch (error) {
+    console.error('Error fetching item statistics by IDs:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+};
+
+/**
  * Get a single item by ID
  * @route GET /api/items/:id
  */
@@ -204,5 +278,6 @@ module.exports = {
   deleteMultipleItems,
   toggleMultipleItemsPurchased,
   getItemStats,
+  getItemStatsByIds,
   getItemById
 };

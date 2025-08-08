@@ -8,6 +8,9 @@ router.get('/', itemsController.getAllItems);
 // Get item statistics (total, purchased, unpurchased)
 router.get('/stats', itemsController.getItemStats);
 
+// Get statistics for specific items by IDs
+router.post('/stats/by-ids', itemsController.getItemStatsByIds);
+
 // Get a single item by ID
 router.get('/:id', itemsController.getItemById);
 

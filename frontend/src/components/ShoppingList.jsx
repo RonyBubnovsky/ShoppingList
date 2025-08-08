@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ShoppingItem from './ShoppingItem';
-import { itemsApi } from '../services/api';
+import { itemsApi, savedListsApi } from '../services/api';
 import { CATEGORIES } from '../constants/categories';
 import { 
   FaTrash, 
@@ -15,7 +15,7 @@ import {
 } from 'react-icons/fa';
 import { CATEGORY_TRANSLATIONS } from '../constants/categoryIcons';
 
-function ShoppingList() {
+function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -31,9 +31,36 @@ function ShoppingList() {
     categoryFilter: ''
   });
 
+  // Listen for storage events to sync between tabs/pages
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'tempItems' && e.newValue) {
+        try {
+          const parsedItems = JSON.parse(e.newValue);
+          setItems(parsedItems);
+        } catch (err) {
+          console.error('Failed to parse items from storage event:', err);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+  
   // Fetch all items when component mounts
   useEffect(() => {
     fetchItems();
+    
+    // Set up interval to refresh items from database every 30 seconds
+    // This ensures purchased items status is always up to date
+    const refreshInterval = setInterval(() => {
+      fetchItems();
+    }, 30000);
+    
+    return () => clearInterval(refreshInterval);
   }, []);
   
   // Apply filters to items and update filtered items
@@ -42,6 +69,15 @@ function ShoppingList() {
     
     const { nameFilter, categoryFilter } = filters;
     let result = [...items];
+    
+    // Always filter out purchased items in the shopping page
+    // This ensures purchased items don't appear after refresh
+    if (hideOnPurchase) {
+      result = result.filter(item => !item.purchased);
+      
+      // Also update localStorage to keep it in sync
+      localStorage.setItem('tempItems', JSON.stringify(result));
+    }
     
     // Filter by name (case insensitive)
     if (nameFilter) {
@@ -56,42 +92,230 @@ function ShoppingList() {
     }
     
     setFilteredItems(result);
-  }, [items, filters]);
+  }, [items, filters, hideOnPurchase]);
 
-  // Calculate stats whenever filtered items change
+  // Calculate stats from the server based on the current list items
   useEffect(() => {
-    const purchased = filteredItems.filter(item => item.purchased).length;
-    const total = filteredItems.length;
+    const fetchStatsFromServer = async () => {
+      try {
+        // First check if we have a saved current list ID
+        const currentListId = localStorage.getItem('currentListId');
+        
+        if (currentListId) {
+          console.log(`Found current list ID in localStorage: ${currentListId}`);
+          
+          // Try to get stats for this saved list directly from the server
+          const savedListStats = await savedListsApi.getSavedListStats(currentListId);
+          
+          if (savedListStats) {
+            console.log("SAVED LIST STATS FROM SERVER:", savedListStats);
+            setStats(savedListStats);
+            return;
+          } else {
+            console.log("Failed to get saved list stats, falling back to cached stats");
+            
+            // Try to use cached stats from localStorage
+            const cachedStats = localStorage.getItem('currentListStats');
+            if (cachedStats) {
+              try {
+                const parsedStats = JSON.parse(cachedStats);
+                console.log("USING CACHED STATS:", parsedStats);
+                setStats(parsedStats);
+                return;
+              } catch (err) {
+                console.error("Failed to parse cached stats:", err);
+              }
+            }
+          }
+        }
+        
+        // If we don't have a saved list ID or failed to get stats, try to calculate from tempItems
+        const tempItems = localStorage.getItem('tempItems');
+        if (!tempItems) {
+          console.log("No items in localStorage for stats");
+          setStats({
+            total: 0,
+            purchased: 0,
+            unpurchased: 0
+          });
+          return;
+        }
+        
+        // Parse items from localStorage
+        const allItems = JSON.parse(tempItems);
+        
+        // Get all item IDs
+        const itemIds = allItems.map(item => item._id);
+        
+        if (itemIds.length === 0) {
+          console.log("No item IDs for stats");
+          setStats({
+            total: 0,
+            purchased: 0,
+            unpurchased: 0
+          });
+          return;
+        }
+        
+        // Fetch stats from server for these specific items
+        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
+        
+        if (serverStats) {
+          console.log("ITEM STATS FROM SERVER:", serverStats);
+          setStats(serverStats);
+        } else {
+          // Fallback to local calculation if server request fails
+          const purchasedItems = allItems.filter(item => item.purchased);
+          const purchased = purchasedItems.length;
+          const total = allItems.length;
+          const unpurchased = total - purchased;
+          
+          console.log(`FALLBACK STATS: total=${total}, purchased=${purchased}, unpurchased=${unpurchased}`);
+          
+          setStats({
+            total,
+            purchased,
+            unpurchased
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
     
-    setStats({
-      total,
-      purchased,
-      unpurchased: total - purchased
-    });
-  }, [filteredItems]);
+    // Fetch stats when component mounts
+    fetchStatsFromServer();
+    
+    // Set up interval to refresh stats every 5 seconds
+    const intervalId = setInterval(fetchStatsFromServer, 5000);
+    
+    // Clean up interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [itemsApi, savedListsApi]);
 
   // Function to fetch items from API
   const fetchItems = async () => {
     try {
       setIsLoading(true);
-      const data = await itemsApi.getAllItems();
+      console.log("Fetching items, hideOnPurchase:", hideOnPurchase);
+      
+      // First check if there's a saved current list in localStorage
+      const savedCurrentList = localStorage.getItem('currentList');
+      
+      // Check if there are temporary items from a previous session
+      const tempItems = localStorage.getItem('tempItems');
+      
+      let data = [];
+      
+      // Always get all items from database first to have the most up-to-date purchase status
+      let allItemsFromDB = [];
+      try {
+        allItemsFromDB = await itemsApi.getAllItems();
+        console.log("All items from database:", allItemsFromDB.length);
+      } catch (dbErr) {
+        console.error('Failed to load all items from database:', dbErr);
+      }
+      
+      // Create a map of items by ID for quick lookup of purchase status
+      const purchaseStatusMap = {};
+      allItemsFromDB.forEach(item => {
+        purchaseStatusMap[item._id] = item.purchased;
+      });
+      
+      // Primary source of truth for which items to show is localStorage or saved list
+      if (tempItems) {
+        // We have temporary items from localStorage - this is the most up-to-date list
+        try {
+          let parsedItems = JSON.parse(tempItems);
+          console.log("Loaded items from localStorage:", parsedItems.length);
+          
+          // Update purchase status from database
+          parsedItems = parsedItems.map(item => {
+            // If we have this item in the database, use its purchase status
+            if (purchaseStatusMap.hasOwnProperty(item._id)) {
+              return {
+                ...item,
+                purchased: purchaseStatusMap[item._id]
+              };
+            }
+            return item;
+          });
+          
+          // Save the updated purchase status back to localStorage
+          localStorage.setItem('tempItems', JSON.stringify(parsedItems));
+          
+          // For display, filter out purchased items in shopping page
+          if (hideOnPurchase) {
+            data = parsedItems.filter(item => !item.purchased);
+            console.log(`Showing ${data.length} unpurchased items out of ${parsedItems.length} total`);
+          } else {
+            data = parsedItems;
+          }
+        } catch (err) {
+          console.error('Failed to parse temporary items:', err);
+          localStorage.removeItem('tempItems');
+          data = []; // Show empty state if we can't parse temp items
+        }
+      } else if (savedCurrentList) {
+        try {
+          // We have a saved list, load items from that list
+          const listInfo = JSON.parse(savedCurrentList);
+          console.log("Loading saved list:", listInfo);
+          
+          // Get the saved list items
+          const result = await savedListsApi.applySavedList(listInfo.id);
+          if (result && result.items) {
+            // Update purchase status from database for each item
+            const updatedItems = result.items.map(item => {
+              // If we have this item in the database, use its purchase status
+              if (purchaseStatusMap.hasOwnProperty(item._id)) {
+                return {
+                  ...item,
+                  purchased: purchaseStatusMap[item._id]
+                };
+              }
+              return item;
+            });
+            
+            // Save these items to localStorage for future reference
+            localStorage.setItem('tempItems', JSON.stringify(updatedItems));
+            
+            // For display, filter out purchased items in shopping page
+            if (hideOnPurchase) {
+              data = updatedItems.filter(item => !item.purchased);
+              console.log(`Showing ${data.length} unpurchased items out of ${updatedItems.length} total`);
+            } else {
+              data = updatedItems;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load saved list:', err);
+          setError('טעינת הרשימה השמורה נכשלה. נא לנסות שוב.');
+          data = []; // Show empty state if we can't load the saved list
+        }
+      } else {
+        // No saved list or temp items, use all items from the database
+        if (hideOnPurchase) {
+          data = allItemsFromDB.filter(item => !item.purchased);
+          console.log(`Showing ${data.length} unpurchased items out of ${allItemsFromDB.length} total`);
+        } else {
+          data = allItemsFromDB;
+        }
+        
+        // Save these items to localStorage for future reference
+        localStorage.setItem('tempItems', JSON.stringify(allItemsFromDB));
+      }
+      
       setItems(data);
       setFilteredItems(data);
       
-      // Calculate stats (either from server or locally)
-      const statsData = await itemsApi.getItemStats();
-      if (statsData) {
-        // Use server-provided stats
-        setStats(statsData);
-      } else {
-        // Calculate locally
-        const purchased = data.filter(item => item.purchased).length;
-        setStats({
-          total: data.length,
-          purchased,
-          unpurchased: data.length - purchased
-        });
-      }
+      // Calculate stats locally
+      const purchased = data.filter(item => item.purchased).length;
+      setStats({
+        total: data.length,
+        purchased,
+        unpurchased: data.length - purchased
+      });
       
       setError(null);
     } catch (err) {
@@ -123,8 +347,16 @@ function ShoppingList() {
   const handleDeleteItem = async (id) => {
     try {
       await itemsApi.deleteItem(id);
-      setItems(items.filter(item => item._id !== id));
+      const updatedItems = items.filter(item => item._id !== id);
+      setItems(updatedItems);
       setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+      
+      // Also update localStorage
+      if (updatedItems.length > 0) {
+        localStorage.setItem('tempItems', JSON.stringify(updatedItems));
+      } else {
+        localStorage.removeItem('tempItems');
+      }
     } catch (err) {
       console.error('Failed to delete item:', err);
       setError('מחיקת הפריט נכשלה. נא לנסות שוב.');
@@ -134,10 +366,96 @@ function ShoppingList() {
   // Toggle purchased status of an item
   const handleTogglePurchased = async (id) => {
     try {
+      console.log("Toggling purchase status for item:", id);
       const updatedItem = await itemsApi.toggleItemPurchased(id);
-      setItems(items.map(item => (
-        item._id === id ? updatedItem : item
-      )));
+      console.log("Updated item from server:", updatedItem);
+      
+      // Get current items from localStorage for consistent updates
+      const tempItems = localStorage.getItem('tempItems');
+      let allItems = [];
+      
+      if (tempItems) {
+        try {
+          allItems = JSON.parse(tempItems);
+        } catch (err) {
+          console.error('Failed to parse tempItems:', err);
+          allItems = [...items]; // Fallback to current items
+        }
+      } else {
+        allItems = [...items];
+      }
+      
+      // Update the purchased status in localStorage for all cases
+      allItems = allItems.map(item => {
+        if (item._id === id) {
+          return { ...item, purchased: updatedItem.purchased };
+        }
+        return item;
+      });
+      
+      // Save updated items to localStorage
+      localStorage.setItem('tempItems', JSON.stringify(allItems));
+      
+      // If item was marked as purchased and we're in shopping page
+      if (hideOnPurchase && updatedItem.purchased) {
+        console.log("Item marked as purchased in shopping page, removing from view");
+        
+        // Remove it from the visible items array
+        const visibleItems = items.filter(item => item._id !== id);
+        setItems(visibleItems);
+        
+        // Update filteredItems to remove the purchased item
+        setFilteredItems(prevFiltered => 
+          prevFiltered.filter(item => item._id !== id)
+        );
+        
+        // Also remove from selected items if it was selected
+        setSelectedItems(prev => 
+          prev.filter(itemId => itemId !== id)
+        );
+      } else {
+        console.log("Regular update for item:", updatedItem);
+        
+        // Regular update for non-purchased items or in main page
+        const updatedVisibleItems = items.map(item => 
+          item._id === id ? updatedItem : item
+        );
+        
+        setItems(updatedVisibleItems);
+      }
+      
+      // Get stats from server after toggle
+      try {
+        // Get all item IDs
+        const itemIds = allItems.map(item => item._id);
+        
+        // Fetch stats from server for these specific items
+        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
+        
+        if (serverStats) {
+          console.log("SERVER STATS after toggle:", serverStats);
+          setStats(serverStats);
+        } else {
+          // Fallback to local calculation if server request fails
+          const purchasedItems = allItems.filter(item => item.purchased);
+          const purchased = purchasedItems.length;
+          const total = allItems.length; // סך כל הפריטים נשאר קבוע
+          const unpurchased = total - purchased;
+          
+          console.log(`FALLBACK STATS after toggle: total=${total}, purchased=${purchased}, unpurchased=${unpurchased}`);
+          
+          setStats({
+            total,
+            purchased,
+            unpurchased
+          });
+        }
+      } catch (statsErr) {
+        console.error("Failed to get stats from server:", statsErr);
+      }
+      
+      // Don't call fetchItems() here to prevent UI refresh
+      // This prevents the item from reappearing in the shopping list
     } catch (err) {
       console.error('Failed to update item:', err);
       setError('עדכון סטטוס הפריט נכשל. נא לנסות שוב.');
@@ -170,8 +488,16 @@ function ShoppingList() {
     
     try {
       await itemsApi.deleteMultipleItems(selectedItems);
-      setItems(items.filter(item => !selectedItems.includes(item._id)));
+      const updatedItems = items.filter(item => !selectedItems.includes(item._id));
+      setItems(updatedItems);
       setSelectedItems([]);
+      
+      // Also update localStorage
+      if (updatedItems.length > 0) {
+        localStorage.setItem('tempItems', JSON.stringify(updatedItems));
+      } else {
+        localStorage.removeItem('tempItems');
+      }
     } catch (err) {
       console.error('Failed to delete items:', err);
       setError('מחיקת הפריטים שנבחרו נכשלה. נא לנסות שוב.');
@@ -183,12 +509,94 @@ function ShoppingList() {
     if (selectedItems.length === 0) return;
     
     try {
-      await itemsApi.updateMultipleItems(selectedItems, purchased);
-      setItems(items.map(item => (
-        selectedItems.includes(item._id) ? { ...item, purchased } : item
-      )));
+      console.log(`Marking ${selectedItems.length} items as purchased=${purchased}`);
+      const result = await itemsApi.updateMultipleItems(selectedItems, purchased);
+      console.log("Update result:", result);
+      
+      // Get current items from localStorage for consistent updates
+      const tempItems = localStorage.getItem('tempItems');
+      let allItems = [];
+      
+      if (tempItems) {
+        try {
+          allItems = JSON.parse(tempItems);
+        } catch (err) {
+          console.error('Failed to parse tempItems:', err);
+          allItems = [...items]; // Fallback to current items
+        }
+      } else {
+        allItems = [...items];
+      }
+      
+      // Update the purchased status in localStorage for all selected items
+      allItems = allItems.map(item => {
+        if (selectedItems.includes(item._id)) {
+          return { ...item, purchased };
+        }
+        return item;
+      });
+      
+      // Save updated items to localStorage
+      localStorage.setItem('tempItems', JSON.stringify(allItems));
+      
+      // If items are being marked as purchased and we're in shopping page
+      if (hideOnPurchase && purchased) {
+        console.log("Removing purchased items from shopping view");
+        
+        // Remove purchased items from the visible items array
+        const visibleItems = items.filter(item => !selectedItems.includes(item._id));
+        setItems(visibleItems);
+        
+        // Update filteredItems to remove the purchased items
+        setFilteredItems(prevFiltered => 
+          prevFiltered.filter(item => !selectedItems.includes(item._id))
+        );
+      } else {
+        console.log("Regular update for items");
+        
+        // Regular update for non-purchased items or in main page
+        const updatedVisibleItems = items.map(item => (
+          selectedItems.includes(item._id) ? { ...item, purchased } : item
+        ));
+        
+        setItems(updatedVisibleItems);
+      }
+      
+      // Get stats from server after bulk update
+      try {
+        // Get all item IDs
+        const itemIds = allItems.map(item => item._id);
+        
+        // Fetch stats from server for these specific items
+        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
+        
+        if (serverStats) {
+          console.log("SERVER STATS after bulk update:", serverStats);
+          setStats(serverStats);
+        } else {
+          // Fallback to local calculation if server request fails
+          const purchasedItems = allItems.filter(item => item.purchased);
+          const purchasedCount = purchasedItems.length;
+          const totalCount = allItems.length; // סך כל הפריטים נשאר קבוע
+          const unpurchasedCount = totalCount - purchasedCount;
+          
+          console.log(`FALLBACK STATS after bulk update: total=${totalCount}, purchased=${purchasedCount}, unpurchased=${unpurchasedCount}`);
+          
+          setStats({
+            total: totalCount,
+            purchased: purchasedCount,
+            unpurchased: unpurchasedCount
+          });
+        }
+      } catch (statsErr) {
+        console.error("Failed to get stats from server:", statsErr);
+      }
+      
       // Clear selection after marking items
       setSelectedItems([]);
+      
+      // Don't call fetchItems() here to prevent UI refresh
+      // This prevents the items from reappearing in the shopping list
     } catch (err) {
       console.error('Failed to update items:', err);
       setError('עדכון הפריטים שנבחרו נכשל. נא לנסות שוב.');
@@ -197,7 +605,11 @@ function ShoppingList() {
 
   // Handle when a new item is added from the form
   const handleItemAdded = (newItem) => {
-    setItems([newItem, ...items]);
+    const updatedItems = [newItem, ...items];
+    setItems(updatedItems);
+    
+    // Also update localStorage
+    localStorage.setItem('tempItems', JSON.stringify(updatedItems));
   };
 
   // Share shopping list via WhatsApp
@@ -250,12 +662,14 @@ function ShoppingList() {
           >
             <FaUndo /> סמן כלא נקנה
           </button>
-          <button 
-            className="btn bulk-btn delete-selected" 
-            onClick={handleDeleteSelected}
-          >
-            <FaTrash /> מחק נבחרים
-          </button>
+          {showDeleteButton && (
+            <button 
+              className="btn bulk-btn delete-selected" 
+              onClick={handleDeleteSelected}
+            >
+              <FaTrash /> מחק נבחרים
+            </button>
+          )}
         </div>
       </div>
     );
@@ -350,15 +764,6 @@ function ShoppingList() {
       <div className="shopping-list-header">
         <h2 className="shopping-list-title">פריטים ברשימה</h2>
         <div className="header-actions">
-          {items.length > 0 && filteredItems.some(item => !item.purchased) && (
-            <button 
-              className="btn btn-whatsapp" 
-              onClick={handleShareWhatsApp}
-              title="שתף רשימה בווצאפ"
-            >
-              <FaWhatsapp /> שתף בווצאפ
-            </button>
-          )}
           <button className="btn btn-primary" onClick={handleSelectAll}>
             {selectedItems.length === items.length && items.length > 0
               ? 'בטל בחירה'
@@ -401,6 +806,7 @@ function ShoppingList() {
               onTogglePurchased={handleTogglePurchased}
               isSelected={selectedItems.includes(item._id)}
               onSelectItem={() => handleSelectItem(item._id)}
+              showDeleteButton={showDeleteButton}
             />
           ))}
         </ul>
