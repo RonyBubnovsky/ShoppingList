@@ -16,6 +16,7 @@ function MainPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [currentList, setCurrentList] = useState(null);
+  const [savedListsVersion, setSavedListsVersion] = useState(0);
   const navigate = useNavigate();
 
   // Load items from database
@@ -233,6 +234,9 @@ function MainPage() {
       setItems([]);
       setSelectedItems([]);
       setCurrentList(null);
+
+      // Notify SavedLists to refresh its list and update the count immediately
+      setSavedListsVersion(v => v + 1);
     } catch (err) {
       console.error('Failed to save list:', err);
       setError(err.response?.data?.error || 'שגיאה בשמירת הרשימה');
@@ -422,6 +426,7 @@ function MainPage() {
                 onListApplied={handleSavedListApplied} 
                 currentList={currentList}
                 onNewList={handleNewList}
+                refreshVersion={savedListsVersion}
               />
               
               {items.length > 0 && (

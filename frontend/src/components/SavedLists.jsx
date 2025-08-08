@@ -3,7 +3,7 @@ import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
 import { showNotification, NOTIFICATION_TYPES } from './Notification';
 
-function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) {
+function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion }) {
   const [savedLists, setSavedLists] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,6 +19,13 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
   useEffect(() => {
     fetchSavedLists();
   }, []);
+
+  // Refetch when parent indicates lists changed
+  useEffect(() => {
+    if (refreshVersion !== undefined) {
+      fetchSavedLists();
+    }
+  }, [refreshVersion]);
 
   // Fetch all saved lists
   const fetchSavedLists = async () => {
@@ -117,8 +124,16 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
       >
         <FaSave /> 
         {currentList 
-          ? <span className="current-list-name">{currentList.name}</span>
-          : 'רשימות שמורות'
+          ? (
+            <>
+              <span className="current-list-name">{currentList.name}</span>
+            </>
+          ) : (
+            <>
+              <span>רשימות שמורות</span>
+              <span className="saved-lists-count"> ({savedLists.length})</span>
+            </>
+          )
         }
       </button>
       
