@@ -14,7 +14,7 @@ function ShoppingPage() {
     <div className="App" dir="rtl">
       <Header />
       <main className="container">
-        <ShoppingList hideOnPurchase={true} showDeleteButton={false} />
+        <ShoppingList hideOnPurchase={true} showDeleteButton={false} showMarkUnpurchased={false} />
       </main>
     </div>
   );

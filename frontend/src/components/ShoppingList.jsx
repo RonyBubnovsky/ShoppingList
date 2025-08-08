@@ -13,7 +13,7 @@ import { CATEGORY_TRANSLATIONS } from '../constants/categoryIcons';
 import '../styles/ListSelector.css';
 import '../styles/ShoppingList.css';
 
-function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
+function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMarkUnpurchased = true }) {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
@@ -257,12 +257,14 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
           >
             <FaCheck /> סמן כנקנה
           </button>
-          <button 
-            className="btn bulk-btn mark-unpurchased" 
-            onClick={() => handleMarkSelectedPurchased(false)}
-          >
-            <FaUndo /> סמן כלא נקנה
-          </button>
+          {showMarkUnpurchased && (
+            <button 
+              className="btn bulk-btn mark-unpurchased" 
+              onClick={() => handleMarkSelectedPurchased(false)}
+            >
+              <FaUndo /> סמן כלא נקנה
+            </button>
+          )}
           {showDeleteButton && (
             <button 
               className="btn bulk-btn delete-selected" 
