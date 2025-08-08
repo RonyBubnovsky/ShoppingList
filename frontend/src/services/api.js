@@ -39,27 +39,15 @@ export const itemsApi = {
   },
   
   // Parse free text and add item to the shopping list
-  parseAndAddItem: async (text) => {
-    // Only add listContextId if we're explicitly working with a saved list
-    // Check if there's a saved list loaded and not just some random ID
-    const currentList = localStorage.getItem('currentList');
+  parseAndAddItem: async (text, listContextId = null) => {
+    const requestData = { text };
     
-    let data = { text };
-    
-    // Only add listContextId if we have a proper saved list loaded
-    if (currentList) {
-      try {
-        const listInfo = JSON.parse(currentList);
-        if (listInfo && listInfo.id) {
-          data.listContextId = listInfo.id;
-        }
-      } catch (err) {
-        console.error('Failed to parse currentList from localStorage:', err);
-        // Don't add listContextId if we can't parse the list info
-      }
+    // Add listContextId to request if provided
+    if (listContextId !== null) {
+      requestData.listContextId = listContextId;
     }
     
-    const response = await api.post('/parse/add', data);
+    const response = await api.post('/parse/add', requestData);
     return response.data;
   },
   
@@ -141,28 +129,7 @@ export const savedListsApi = {
   
   // Apply a saved list to the current shopping list
   applySavedList: async (id) => {
-    console.log(`Applying saved list with ID: ${id}`);
     const response = await api.post(`/saved-lists/${id}/apply`);
-    console.log('Response from applySavedList:', response.data);
-    
-    // Check if we have items and they're properly formatted
-    if (response.data && response.data.items) {
-      // Make sure all items have their purchased status properly set
-      const items = response.data.items.map(item => ({
-        ...item,
-      }));
-      
-      console.log(`Processed ${items.length} items from saved list`);
-      
-      // Don't save currentListId separately - this causes issues with new items
-      // The currentList object should be saved by the component using this function
-      
-      return {
-        ...response.data,
-        items
-      };
-    }
-    
     return response.data;
   },
   

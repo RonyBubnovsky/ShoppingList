@@ -79,15 +79,7 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
       // If the deleted list is the current list, clear current list
       if (currentList && currentList.id === id) {
         setCurrentList(null);
-        
-        // Clear localStorage if this was the current list
-        localStorage.removeItem('currentList');
-        localStorage.removeItem('currentListId');
-        localStorage.removeItem('currentListStats');
       }
-      
-      // Always remove temporary items from localStorage
-      localStorage.removeItem('tempItems');
       
       // Show success notification with item count if available
       if (result.itemsDeleted !== undefined) {

@@ -9,7 +9,6 @@ import Notification, { showNotification, NOTIFICATION_TYPES } from '../component
 import { itemsApi, savedListsApi } from '../services/api';
 
 function MainPage() {
-  const [refreshList, setRefreshList] = useState(false);
   const [items, setItems] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -19,205 +18,65 @@ function MainPage() {
   const [currentList, setCurrentList] = useState(null);
   const navigate = useNavigate();
 
-  // Save items to localStorage whenever they change
-  useEffect(() => {
-    if (items.length > 0) {
-      localStorage.setItem('tempItems', JSON.stringify(items));
-    } else {
-      localStorage.removeItem('tempItems');
+  // Load items from database
+  const loadItems = useCallback(async () => {
+    try {
+      if (currentList) {
+        // Load items for specific saved list
+        const result = await savedListsApi.applySavedList(currentList.id);
+        if (result && result.items) {
+          setItems(result.items);
+        }
+      } else {
+        // Load items with null listContext (main list) - always get fresh data
+        const allItems = await itemsApi.getAllItems(null);
+        console.log(`MainPage: Loaded ${allItems.length} items from database`);
+        setItems(allItems);
+      }
+    } catch (err) {
+      console.error('Failed to load items:', err);
+      setItems([]);
     }
-  }, [items]);
+  }, [currentList]);
 
-  // Listen for storage events to sync between tabs/pages
+  // Load items when component mounts
   useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'tempItems' && e.newValue) {
-        try {
-          const parsedItems = JSON.parse(e.newValue);
-          setItems(parsedItems);
-        } catch (err) {
-          console.error('Failed to parse items from storage event:', err);
-        }
-      }
+    loadItems();
+  }, [loadItems]);
+
+  // Refresh items when user returns to this page (e.g., from shopping page)
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('MainPage: Window focused, refreshing items to get latest purchase status');
+      loadItems();
     };
-    
-    // Listen for when user comes back to this tab/window
-    const handleFocus = async () => {
-      console.log('MainPage: Window focused, checking for new items');
-      
-      // If we don't have a current list loaded, check for new items with null listContext
-      if (!currentList) {
-        try {
-          const latestItems = await itemsApi.getAllItems(null);
-          console.log(`MainPage: Found ${latestItems.length} items with null listContext on focus`);
-          
-          // Only update if we have new items or the count is different
-          if (latestItems.length !== items.length) {
-            console.log('MainPage: Item count changed, updating items');
-            setItems(latestItems);
-          }
-        } catch (err) {
-          console.error('Failed to refresh items on focus:', err);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
+
     window.addEventListener('focus', handleFocus);
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [currentList, items.length]);
+  }, [loadItems]);
 
-  // Fetch items when component mounts or refreshList changes
-  useEffect(() => {
-    const loadInitialData = async () => {
-      // Clean up any stray currentListId from localStorage to prevent issues
-      const currentListId = localStorage.getItem('currentListId');
-      if (currentListId) {
-        console.log('Removing stray currentListId from localStorage');
-        localStorage.removeItem('currentListId');
-      }
-      
-      // Check if we're in "new list" mode
-      const isNewList = localStorage.getItem('newList');
-      
-      // Check if there are temporary items from a previous session
-      const tempItems = localStorage.getItem('tempItems');
-      
-      // First check if there's a saved current list in localStorage
-      const savedCurrentList = localStorage.getItem('currentList');
-      
-      if (isNewList === 'true') {
-        // We're in new list mode - don't load anything, just clear the flag
-        localStorage.removeItem('newList');
-        setItems([]);
-        setCurrentList(null);
-      } else if (tempItems) {
-        // We have temporary items from a previous session
-        try {
-          const parsedItems = JSON.parse(tempItems);
-          setItems(parsedItems);
-        } catch (err) {
-          console.error('Failed to parse temporary items:', err);
-          localStorage.removeItem('tempItems');
-          setItems([]);
-        }
-      } else if (savedCurrentList) {
-        try {
-          // We have a saved list, load it
-          const listInfo = JSON.parse(savedCurrentList);
-          setCurrentList(listInfo);
-          
-          // Load items from the saved list
-          try {
-            const result = await savedListsApi.applySavedList(listInfo.id);
-            if (result && result.items) {
-              console.log(`Loading ${result.items.length} items from saved list ${listInfo.name}`);
-              setItems(result.items);
-              // Update tempItems to keep everything in sync
-              localStorage.setItem('tempItems', JSON.stringify(result.items));
-            }
-          } catch (err) {
-            console.error('Failed to load saved list:', err);
-            localStorage.removeItem('currentList');
-            setItems([]);
-          }
-        } catch (err) {
-          console.error('Failed to parse saved list:', err);
-          localStorage.removeItem('currentList');
-          setItems([]);
-        }
-      } else {
-                  // No saved list or temp items, check if there are any saved lists
-          try {
-            const lists = await savedListsApi.getAllSavedLists();
-            if (lists && lists.length > 0) {
-              // There are saved lists, but none selected - show empty state
-              setItems([]);
-                    } else {
-          // No saved lists at all - load all items from the database with null listContext
-          try {
-            // Explicitly use null to get items without list context
-            const allItems = await itemsApi.getAllItems(null);
-            console.log(`Loading ${allItems.length} items with null listContext`);
-            setItems(allItems);
-          } catch (itemErr) {
-            console.error('Failed to load all items:', itemErr);
-            setItems([]);
-          }
-        }
-          } catch (err) {
-            console.error('Failed to check for saved lists:', err);
-            // Try to load all items as fallback
-            try {
-              // Explicitly use null to get items without list context
-              const allItems = await itemsApi.getAllItems(null);
-              setItems(allItems);
-            } catch (itemErr) {
-              console.error('Failed to load all items:', itemErr);
-              setItems([]);
-            }
-          }
-      }
-    };
-    
-    loadInitialData();
-  }, [refreshList]);
+  
 
   // Callback for when an item is added
-  const handleItemAdded = useCallback((newItemOrItems) => {
-    if (Array.isArray(newItemOrItems)) {
-      // If we received an array of items, check for duplicates before setting
-      setItems(prev => {
-        // Create a map of existing item IDs for quick lookup
-        const existingIds = new Set(prev.map(item => item._id));
-        
-        // Filter out items that already exist
-        const uniqueNewItems = newItemOrItems.filter(item => !existingIds.has(item._id));
-        
-        if (uniqueNewItems.length === 0) {
-          console.log('No new unique items to add, keeping existing items');
-          return prev; // No new items to add
-        }
-        
-        console.log(`Adding ${uniqueNewItems.length} unique items out of ${newItemOrItems.length} provided`);
-        return [...prev, ...uniqueNewItems];
-      });
-    } else if (newItemOrItems) {
-      // If we have a single new item, check if it already exists
-      setItems(prev => {
-        const existingItem = prev.find(item => item._id === newItemOrItems._id);
-        if (existingItem) {
-          console.log('Item already exists, not adding duplicate');
-          return prev;
-        }
-        
-        console.log('Adding single new item');
-        return [...prev, newItemOrItems];
-      });
+  const handleItemAdded = useCallback((newItem) => {
+    if (newItem) {
+      // Add the new item to the list
+      setItems(prev => [newItem, ...prev]);
     } else {
-      // Otherwise refresh the whole list
-      console.log('Refreshing entire item list');
-      setRefreshList(prev => !prev);
+      // Refresh the list from database
+      loadItems();
     }
-  }, []);
+  }, [loadItems]);
 
   // Handle delete item
   const handleDeleteItem = async (id) => {
     try {
       await itemsApi.deleteItem(id);
-      const updatedItems = items.filter(item => item._id !== id);
-      setItems(updatedItems);
+      setItems(items.filter(item => item._id !== id));
       setSelectedItems(selectedItems.filter(itemId => itemId !== id));
-      
-      // If all items are deleted, clear the current list
-      if (updatedItems.length === 0 && currentList) {
-        setCurrentList(null);
-        localStorage.removeItem('currentList');
-      }
     } catch (err) {
       console.error('Failed to delete item:', err);
     }
@@ -274,15 +133,8 @@ function MainPage() {
     
     try {
       await itemsApi.deleteMultipleItems(selectedItems);
-      const updatedItems = items.filter(item => !selectedItems.includes(item._id));
-      setItems(updatedItems);
+      setItems(items.filter(item => !selectedItems.includes(item._id)));
       setSelectedItems([]);
-      
-      // If all items are deleted, clear the current list
-      if (updatedItems.length === 0 && currentList) {
-        setCurrentList(null);
-        localStorage.removeItem('currentList');
-      }
     } catch (err) {
       console.error('Failed to delete items:', err);
     }
@@ -377,15 +229,10 @@ function MainPage() {
       // Show success notification
       showNotification(`הרשימה "${listName}" נשמרה בהצלחה`, NOTIFICATION_TYPES.SUCCESS);
       
-      // Clear items after saving the list and clear localStorage
+      // Clear items after saving the list
       setItems([]);
       setSelectedItems([]);
       setCurrentList(null);
-      localStorage.removeItem('currentList');
-      localStorage.removeItem('tempItems'); // Clear temp items to prevent confusion
-      
-      // Create a special "new list" marker in localStorage
-      localStorage.setItem('newList', 'true');
     } catch (err) {
       console.error('Failed to save list:', err);
       setError(err.response?.data?.error || 'שגיאה בשמירת הרשימה');
@@ -396,9 +243,7 @@ function MainPage() {
   
   // Handle when a saved list is applied
   const handleSavedListApplied = (newItems, listInfo) => {
-    console.log(`MainPage: Applying saved list with ${newItems.length} items`);
-    
-    // Replace items state completely with the new items (don't add to existing)
+    // Replace items state completely with the new items
     setItems(newItems);
     
     // Clear any selected items
@@ -406,14 +251,6 @@ function MainPage() {
     
     // Set the current list info
     setCurrentList(listInfo);
-    
-    // Save to localStorage
-    if (listInfo) {
-      localStorage.setItem('currentList', JSON.stringify(listInfo));
-    }
-    
-    // Also update tempItems to keep everything in sync
-    localStorage.setItem('tempItems', JSON.stringify(newItems));
   };
   
   // Handle starting a new list
@@ -424,14 +261,6 @@ function MainPage() {
     setSelectedItems([]);
     // Clear current list
     setCurrentList(null);
-    // Clear localStorage completely
-    localStorage.removeItem('currentList');
-    localStorage.removeItem('currentListId'); // Clean up any stray currentListId
-    localStorage.removeItem('tempItems'); // Clear temp items too
-    
-    // Optionally, clear items from the database if needed
-    // This is commented out as it might be too destructive
-    // itemsApi.deleteMultipleItems(items.map(item => item._id));
   };
 
   // Toggle purchased status of multiple items
@@ -583,7 +412,7 @@ function MainPage() {
     <div className="App" dir="rtl">
       <Header />
       <main className="container">
-        <AddItemForm onItemAdded={handleItemAdded} />
+        <AddItemForm onItemAdded={handleItemAdded} currentList={currentList} />
         
         <div className="items-container">
           <div className="items-header">

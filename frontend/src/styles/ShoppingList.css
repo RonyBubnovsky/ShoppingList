@@ -13,6 +13,13 @@
   flex-wrap: wrap;
   gap: 1.5rem;
   padding: 1rem 0;
+  direction: rtl !important;
+  text-align: right !important;
+}
+
+.shopping-list-header * {
+  direction: rtl;
+  text-align: right;
 }
 
 .header-actions {
@@ -34,9 +41,12 @@
   white-space: nowrap;
 }
 
-.shopping-list-title {
+.shopping-list-container .shopping-list-header .shopping-list-title {
   font-size: 1.5rem;
   color: var(--secondary-color);
+  text-align: right !important;
+  direction: rtl !important;
+  width: 100% !important;
 }
 
 @keyframes fadeIn {
@@ -245,9 +255,11 @@
     gap: 1rem;
   }
   
-  .shopping-list-title {
-    text-align: center;
+  .shopping-list-container .shopping-list-header .shopping-list-title {
+    text-align: right !important;
+    direction: rtl !important;
     margin-bottom: 0.5rem;
+    width: 100% !important;
   }
   
   .header-actions {

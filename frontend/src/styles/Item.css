@@ -22,12 +22,21 @@
 .item-card.item-purchased {
   background-color: var(--purchased-bg);
   border-right: 4px solid var(--success-color);
+  opacity: 0.8;
+  position: relative;
 }
+
+
 
 .item-card.item-purchased .item-name,
 .item-card.item-purchased .item-details {
   text-decoration: line-through;
   opacity: 0.7;
+}
+
+.item-card.item-purchased .item-image,
+.item-card.item-purchased .item-category {
+  opacity: 0.6;
 }
 
 .checkbox-container {

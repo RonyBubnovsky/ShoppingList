@@ -133,23 +133,25 @@ const deleteSavedList = async (req, res) => {
 const applySavedList = async (req, res) => {
   try {
     const listId = req.params.id;
-    const savedList = await SavedList.findById(listId).populate('items');
+    const savedList = await SavedList.findById(listId);
     
     if (!savedList) {
       return res.status(404).json({ error: 'Saved list not found' });
     }
     
-    console.log(`Applying saved list ${savedList.name} with ${savedList.items.length} items`);
+    console.log(`Applying saved list ${savedList.name}`);
     
-    // Just return the existing items from the saved list
-    // Don't create new items to avoid duplicates in the database
-    const items = savedList.items.map(item => ({
-      ...item.toObject(),
-      purchased: false // Reset purchased status when applying a saved list
-    }));
+    // Get ALL items that have this listContext, not just those in the savedList.items
+    // This ensures we get newly added items that might not be in the saved list yet
+    const allItems = await Item.find({ listContext: listId });
+    
+    console.log(`Found ${allItems.length} items with listContext ${listId}`);
+    
+    // Convert to plain objects
+    const items = allItems.map(item => item.toObject());
     
     // Log the items being returned
-    console.log(`Returning ${items.length} existing items from saved list`);
+    console.log(`Returning ${items.length} items from database for list ${savedList.name}`);
     
     res.json({
       message: `Applied ${items.length} items from saved list`,
