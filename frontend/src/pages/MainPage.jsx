@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSave, FaShoppingCart, FaTrash, FaCheck, FaWhatsapp, FaUndo } from 'react-icons/fa';
+import { FaSave, FaShoppingCart, FaTrash, FaCheck, FaWhatsapp, FaUndo, FaPlus } from 'react-icons/fa';
 import Header from '../components/Header';
 import AddItemForm from '../components/AddItemForm';
 import SavedLists from '../components/SavedLists';
@@ -75,9 +75,12 @@ function MainPage() {
   // Handle delete item
   const handleDeleteItem = async (id) => {
     try {
+      const deletedItem = items.find(item => item._id === id);
       await itemsApi.deleteItem(id);
       setItems(items.filter(item => item._id !== id));
       setSelectedItems(selectedItems.filter(itemId => itemId !== id));
+      const deletedName = deletedItem?.name ? `"${deletedItem.name}" ` : '';
+      showNotification(`הפריט ${deletedName}נמחק בהצלחה`, NOTIFICATION_TYPES.SUCCESS);
     } catch (err) {
       console.error('Failed to delete item:', err);
     }
@@ -437,12 +440,21 @@ function MainPage() {
                       : 'בחר הכל'
                     }
                   </button>
-                  <button 
-                    className="btn save-list-btn" 
-                    onClick={handleShowSaveModal}
-                  >
-                    <FaSave /> {currentList ? `עדכן רשימה "${currentList.name}"` : 'שמור רשימה'}
-                  </button>
+                  {currentList ? (
+                    <button 
+                      className="btn save-list-btn" 
+                      onClick={handleNewList}
+                    >
+                      <FaPlus /> רשימה חדשה
+                    </button>
+                  ) : (
+                    <button 
+                      className="btn save-list-btn" 
+                      onClick={handleShowSaveModal}
+                    >
+                      <FaSave /> שמור רשימה
+                    </button>
+                  )}
                   <button 
                     className="btn btn-whatsapp" 
                     onClick={handleShareWhatsApp}
