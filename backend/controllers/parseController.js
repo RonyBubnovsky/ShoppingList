@@ -9,7 +9,7 @@ const Item = require('../models/Item');
  */
 const parseAndAddItem = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, listContextId } = req.body;
     
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
@@ -35,14 +35,24 @@ const parseAndAddItem = async (req, res) => {
       const imageUrl = await getItemImage(name);
       
       try {
-        // Check if same item already exists (same name, unit and category)
-        const existingItem = await Item.findOne({
+        // Check if same item already exists (same name, unit, category AND list context)
+        const existingItemQuery = {
           name,
           unit,
           category
-        });
+        };
         
-        // If item exists, update quantity instead of creating new one
+        // Add list context to query if provided
+        if (listContextId) {
+          existingItemQuery.listContext = listContextId;
+        } else {
+          // For items without list context (current active shopping list)
+          existingItemQuery.listContext = null;
+        }
+        
+        const existingItem = await Item.findOne(existingItemQuery);
+        
+        // If item exists in the same list context, update quantity instead of creating new one
         if (existingItem) {
           existingItem.quantity += parsedQuantity;
           // Update image URL if we found one and there wasn't one already
@@ -65,7 +75,8 @@ const parseAndAddItem = async (req, res) => {
             unit,
             category,
             purchased: false,
-            imageUrl
+            imageUrl,
+            listContext: listContextId || null
           });
           
           const savedItem = await newItem.save();

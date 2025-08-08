@@ -26,6 +26,11 @@ const itemSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  listContext: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SavedList',
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

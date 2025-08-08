@@ -54,7 +54,7 @@ const createSavedList = async (req, res) => {
       items = itemIds;
     } else {
       // Otherwise get all current non-purchased items
-      const currentItems = await Item.find({ purchased: false });
+      const currentItems = await Item.find({ purchased: false, listContext: null });
       items = currentItems.map(item => item._id);
     }
     
@@ -68,6 +68,13 @@ const createSavedList = async (req, res) => {
     });
     
     const savedList = await newSavedList.save();
+    
+    // Update the list context for all items in this list
+    await Item.updateMany(
+      { _id: { $in: items } },
+      { $set: { listContext: savedList._id } }
+    );
+    
     res.status(201).json(savedList);
   } catch (error) {
     console.error('Error creating saved list:', error);
@@ -134,12 +141,28 @@ const applySavedList = async (req, res) => {
     
     console.log(`Applying saved list ${savedList.name} with ${savedList.items.length} items`);
     
-    // Instead of creating new items, just return the existing items from the saved list
-    // This prevents duplicates in the items collection
-    const items = savedList.items;
+    // Create new items based on the saved list items, but assign the current list context
+    // This ensures items are properly tracked per list context
+    const items = [];
+    
+    for (const item of savedList.items) {
+      // Create a new item with the same properties but with the current list context
+      const newItem = new Item({
+        name: item.name,
+        quantity: item.quantity,
+        unit: item.unit,
+        category: item.category,
+        purchased: false, // Reset purchased status when applying a saved list
+        imageUrl: item.imageUrl,
+        listContext: savedList._id // Associate with the saved list ID
+      });
+      
+      const savedItem = await newItem.save();
+      items.push(savedItem);
+    }
     
     // Log the items being returned
-    console.log(`Returning ${items.length} items from saved list`);
+    console.log(`Created ${items.length} new items with list context from saved list`);
     
     res.json({
       message: `Applied ${items.length} items from saved list`,

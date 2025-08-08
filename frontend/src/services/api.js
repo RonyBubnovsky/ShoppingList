@@ -15,8 +15,12 @@ const api = axios.create({
 // API methods for items
 export const itemsApi = {
   // Get all shopping list items
-  getAllItems: async () => {
-    const response = await api.get('/items');
+  getAllItems: async (listContextId = null) => {
+    let url = '/items';
+    if (listContextId) {
+      url += `?listContext=${listContextId}`;
+    }
+    const response = await api.get(url);
     return response.data;
   },
   
@@ -24,13 +28,32 @@ export const itemsApi = {
   
   // Add a new item to the shopping list
   addItem: async (item) => {
+    // Get the current listContextId from localStorage if available
+    const currentListId = localStorage.getItem('currentListId');
+    
+    // If we have a current list ID and the item doesn't specify its own listContextId,
+    // add the currentListId to the item
+    if (currentListId && !item.listContextId) {
+      item.listContextId = currentListId;
+    }
+    
     const response = await api.post('/items', item);
     return response.data;
   },
   
   // Parse free text and add item to the shopping list
   parseAndAddItem: async (text) => {
-    const response = await api.post('/parse/add', { text });
+    // Get the current listContextId from localStorage if available
+    const currentListId = localStorage.getItem('currentListId');
+    
+    let data = { text };
+    
+    // If we have a current list ID, add it to the request
+    if (currentListId) {
+      data.listContextId = currentListId;
+    }
+    
+    const response = await api.post('/parse/add', data);
     return response.data;
   },
   

@@ -7,7 +7,20 @@ const SavedList = require('../models/SavedList');
  */
 const getAllItems = async (req, res) => {
   try {
-    const items = await Item.find().sort({ createdAt: -1 });
+    // By default, only return items with no list context (current shopping list)
+    const { listContext } = req.query;
+    
+    let query = {};
+    
+    // If listContext is provided, filter by it
+    if (listContext) {
+      query.listContext = listContext;
+    } else {
+      // Otherwise get only items with no list context (main shopping list)
+      query.listContext = null;
+    }
+    
+    const items = await Item.find(query).sort({ createdAt: -1 });
     res.json(items);
   } catch (error) {
     console.error('Error fetching items:', error);
@@ -21,33 +34,45 @@ const getAllItems = async (req, res) => {
  */
 const addItem = async (req, res) => {
   try {
-    const { name, quantity, unit, category } = req.body;
+    const { name, quantity, unit, category, listContextId } = req.body;
     
     if (!name || !quantity || !unit || !category) {
       return res.status(400).json({ error: 'All fields are required' });
     }
     
-    // Check if same item already exists (same name, unit and category)
-    const existingItem = await Item.findOne({
+    // Check if same item already exists (same name, unit, category AND list context)
+    // Only check for duplicates within the same list context
+    const existingItemQuery = {
       name,
       unit,
       category
-    });
+    };
     
-    // If item exists, update quantity instead of creating new one
+    // Add list context to query if provided
+    if (listContextId) {
+      existingItemQuery.listContext = listContextId;
+    } else {
+      // For items without list context (current active shopping list)
+      existingItemQuery.listContext = null;
+    }
+    
+    const existingItem = await Item.findOne(existingItemQuery);
+    
+    // If item exists in the same list context, update quantity instead of creating new one
     if (existingItem) {
       existingItem.quantity += parseInt(quantity);
       await existingItem.save();
       return res.status(200).json(existingItem);
     }
     
-    // Create new item
+    // Create new item with list context if provided
     const newItem = new Item({
       name,
       quantity: parseInt(quantity),
       unit,
       category,
-      purchased: false
+      purchased: false,
+      listContext: listContextId || null
     });
     
     const savedItem = await newItem.save();
