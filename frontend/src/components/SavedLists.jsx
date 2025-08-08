@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
+import { showNotification, NOTIFICATION_TYPES } from './Notification';
 
 function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) {
   const [savedLists, setSavedLists] = useState([]);
@@ -57,17 +58,45 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
   const handleDeleteList = async (id, e) => {
     e.stopPropagation(); // Prevent triggering the parent onClick
     
+    // Find the list name for the notification
+    const listToDelete = savedLists.find(list => list._id === id);
+    const listName = listToDelete ? listToDelete.name : '';
+    
     try {
-      await savedListsApi.deleteSavedList(id);
+      // Delete the list and its items
+      const result = await savedListsApi.deleteSavedList(id, true);
+      console.log('Delete result:', result);
+      
+      // Update the UI
       setSavedLists(savedLists.filter(list => list._id !== id));
       
       // If the deleted list is the current list, clear current list
       if (currentList && currentList.id === id) {
         setCurrentList(null);
+        
+        // Clear localStorage if this was the current list
+        localStorage.removeItem('currentList');
+        localStorage.removeItem('currentListId');
+        localStorage.removeItem('currentListStats');
+        localStorage.removeItem('tempItems');
+      }
+      
+      // Show success notification with item count if available
+      if (result.itemsDeleted !== undefined) {
+        showNotification(
+          `הרשימה "${listName}" נמחקה בהצלחה יחד עם ${result.itemsDeleted} פריטים`, 
+          NOTIFICATION_TYPES.SUCCESS
+        );
+      } else {
+        showNotification(
+          `הרשימה "${listName}" נמחקה בהצלחה`, 
+          NOTIFICATION_TYPES.SUCCESS
+        );
       }
     } catch (err) {
       console.error('Failed to delete saved list:', err);
       setError('מחיקת הרשימה השמורה נכשלה');
+      showNotification('מחיקת הרשימה נכשלה', NOTIFICATION_TYPES.ERROR);
     }
   };
 
