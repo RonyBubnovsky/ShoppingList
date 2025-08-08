@@ -142,8 +142,8 @@ export const savedListsApi = {
   },
   
   // Delete a saved list
-  deleteSavedList: async (id) => {
-    const response = await api.delete(`/saved-lists/${id}`);
+  deleteSavedList: async (id, deleteItems = true) => {
+    const response = await api.delete(`/saved-lists/${id}?deleteItems=${deleteItems}`);
     return response.data;
   },
   

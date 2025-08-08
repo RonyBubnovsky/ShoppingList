@@ -82,13 +82,37 @@ const createSavedList = async (req, res) => {
 const deleteSavedList = async (req, res) => {
   try {
     const listId = req.params.id;
-    const deletedList = await SavedList.findByIdAndDelete(listId);
+    const { deleteItems = false } = req.query;
     
-    if (!deletedList) {
+    // First find the list to get its items
+    const savedList = await SavedList.findById(listId);
+    
+    if (!savedList) {
       return res.status(404).json({ error: 'Saved list not found' });
     }
     
-    res.json({ message: 'Saved list deleted', id: listId });
+    // Store the items for potential deletion
+    const itemsToDelete = [...savedList.items];
+    
+    // Delete the saved list
+    await SavedList.findByIdAndDelete(listId);
+    
+    // If deleteItems is true, also delete all items in the list from the items collection
+    if (deleteItems === 'true' && itemsToDelete.length > 0) {
+      console.log(`Deleting ${itemsToDelete.length} items from items collection`);
+      
+      // Delete all items in the list
+      const deleteResult = await Item.deleteMany({ _id: { $in: itemsToDelete } });
+      console.log(`Deleted ${deleteResult.deletedCount} items`);
+      
+      return res.json({ 
+        message: `Saved list deleted with ${deleteResult.deletedCount} items`, 
+        id: listId,
+        itemsDeleted: deleteResult.deletedCount
+      });
+    }
+    
+    res.json({ message: 'Saved list deleted, items preserved', id: listId });
   } catch (error) {
     console.error('Error deleting saved list:', error);
     res.status(500).json({ error: 'Failed to delete saved list' });

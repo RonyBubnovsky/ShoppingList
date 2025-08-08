@@ -88,7 +88,7 @@ function AddItemForm({ onItemAdded }) {
               name="freeText"
               value={freeText}
               onChange={handleChange}
-              placeholder="הכנס פריט או רשימת פריטים מופרדים בפסיקים..."
+              placeholder="הכנס פריט או פריטים מופרדים בפסיקים..."
               required
               className="form-input form-input-free-text"
               dir="rtl"
@@ -106,7 +106,7 @@ function AddItemForm({ onItemAdded }) {
                 <>מוסיף...</>
               ) : (
                 <>
-                  <FaPlus /> הוסף לרשימה
+                  <FaPlus /> הוסף
                 </>
               )}
             </button>
