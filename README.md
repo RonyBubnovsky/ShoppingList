@@ -8,7 +8,7 @@ A simple shopping list application I built for my parents to help them manage gr
 - Mark items as purchased with a single click
 - Group similar items (automatically increases quantity of existing items)
 - Filter items by name or category
-- View statistics of purchased/remaining items
+- Save shopping lists to access and update them later
 - Share shopping list via WhatsApp - Send your shopping list to family or friends with one click
 - Mobile-friendly design with RTL (right-to-left) support
 - AI-powered item parsing using Google Gemini API (add multiple items with plain text)
