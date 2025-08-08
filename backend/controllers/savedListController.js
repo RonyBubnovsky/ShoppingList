@@ -209,6 +209,64 @@ const getSavedListStats = async (req, res) => {
   }
 };
 
+/**
+ * Get statistics for all saved lists
+ * @route GET /api/saved-lists/stats/all
+ */
+const getAllSavedListsStats = async (req, res) => {
+  try {
+    // Get all saved lists with their items
+    const savedLists = await SavedList.find().populate('items');
+    
+    if (!savedLists || savedLists.length === 0) {
+      return res.json({
+        total: 0,
+        purchased: 0,
+        unpurchased: 0,
+        lists: []
+      });
+    }
+    
+    // Calculate statistics across all lists
+    let totalItems = 0;
+    let totalPurchasedItems = 0;
+    const listsStats = [];
+    
+    // Process each list
+    savedLists.forEach(list => {
+      const listTotalItems = list.items.length;
+      const listPurchasedItems = list.items.filter(item => item.purchased).length;
+      const listUnpurchasedItems = listTotalItems - listPurchasedItems;
+      
+      totalItems += listTotalItems;
+      totalPurchasedItems += listPurchasedItems;
+      
+      // Add this list's stats to the array
+      listsStats.push({
+        listId: list._id,
+        listName: list.name,
+        total: listTotalItems,
+        purchased: listPurchasedItems,
+        unpurchased: listUnpurchasedItems
+      });
+    });
+    
+    const totalUnpurchasedItems = totalItems - totalPurchasedItems;
+    
+    console.log(`Stats for all saved lists: total=${totalItems}, purchased=${totalPurchasedItems}, unpurchased=${totalUnpurchasedItems}, lists=${savedLists.length}`);
+    
+    res.json({
+      total: totalItems,
+      purchased: totalPurchasedItems,
+      unpurchased: totalUnpurchasedItems,
+      lists: listsStats
+    });
+  } catch (error) {
+    console.error('Error fetching all saved lists statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics for all saved lists' });
+  }
+};
+
 module.exports = {
   getAllSavedLists,
   getSavedListById,
@@ -216,5 +274,6 @@ module.exports = {
   deleteSavedList,
   applySavedList,
   updateSavedList,
-  getSavedListStats
+  getSavedListStats,
+  getAllSavedListsStats
 };

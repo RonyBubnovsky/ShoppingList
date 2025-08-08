@@ -133,6 +133,25 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         const tempItems = localStorage.getItem('tempItems');
         if (!tempItems) {
           console.log("No items in localStorage for stats");
+          
+          // If there are no items in localStorage, check if we have any saved lists
+          // and use their combined statistics
+          try {
+            const allListsStats = await savedListsApi.getAllSavedListsStats();
+            if (allListsStats) {
+              console.log("ALL SAVED LISTS STATS FROM SERVER:", allListsStats);
+              setStats({
+                total: allListsStats.total,
+                purchased: allListsStats.purchased,
+                unpurchased: allListsStats.unpurchased
+              });
+              return;
+            }
+          } catch (statsErr) {
+            console.error("Failed to get all saved lists stats:", statsErr);
+          }
+          
+          // If all else fails, return zeros
           setStats({
             total: 0,
             purchased: 0,
@@ -294,7 +313,33 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
           data = []; // Show empty state if we can't load the saved list
         }
       } else {
-        // No saved list or temp items, use all items from the database
+              // No saved list or temp items
+      // Check if we have any saved lists and use their items
+      try {
+        const allListsStats = await savedListsApi.getAllSavedListsStats();
+        if (allListsStats && allListsStats.lists && allListsStats.lists.length > 0) {
+          console.log(`Found ${allListsStats.lists.length} saved lists with ${allListsStats.total} total items`);
+          
+          // We have saved lists, but none is selected - show empty state
+          // This allows the user to explicitly choose which list to work with
+          data = [];
+          console.log("No list selected, showing empty state");
+        } else {
+          // No saved lists at all, use all items from the database
+          if (hideOnPurchase) {
+            data = allItemsFromDB.filter(item => !item.purchased);
+            console.log(`Showing ${data.length} unpurchased items out of ${allItemsFromDB.length} total`);
+          } else {
+            data = allItemsFromDB;
+          }
+          
+          // Save these items to localStorage for future reference
+          localStorage.setItem('tempItems', JSON.stringify(allItemsFromDB));
+        }
+      } catch (err) {
+        console.error("Failed to check for saved lists:", err);
+        
+        // Fallback to showing all items from database
         if (hideOnPurchase) {
           data = allItemsFromDB.filter(item => !item.purchased);
           console.log(`Showing ${data.length} unpurchased items out of ${allItemsFromDB.length} total`);
@@ -304,6 +349,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         
         // Save these items to localStorage for future reference
         localStorage.setItem('tempItems', JSON.stringify(allItemsFromDB));
+      }
       }
       
       setItems(data);

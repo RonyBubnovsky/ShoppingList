@@ -122,6 +122,19 @@ export const savedListsApi = {
     }
   },
   
+  // Get statistics for all saved lists
+  getAllSavedListsStats: async () => {
+    try {
+      console.log('Fetching stats for all saved lists');
+      const response = await api.get('/saved-lists/stats/all');
+      console.log('All saved lists stats from server:', response.data);
+      return response.data;
+    } catch (error) {
+      console.warn('Failed to get all saved lists stats:', error);
+      return null;
+    }
+  },
+  
   // Create a new saved list
   createSavedList: async (name, itemIds = null) => {
     const response = await api.post('/saved-lists', { name, itemIds });

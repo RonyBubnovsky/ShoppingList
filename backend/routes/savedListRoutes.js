@@ -5,6 +5,9 @@ const savedListController = require('../controllers/savedListController');
 // Get all saved lists
 router.get('/', savedListController.getAllSavedLists);
 
+// Get statistics for all saved lists
+router.get('/stats/all', savedListController.getAllSavedListsStats);
+
 // Get a saved list by ID
 router.get('/:id', savedListController.getSavedListById);
 
