@@ -138,25 +138,14 @@ const applySavedList = async (req, res) => {
     // This prevents duplicates in the items collection
     const items = savedList.items;
     
-    // Calculate statistics for this list
-    const totalItems = savedList.items.length;
-    const purchasedItems = savedList.items.filter(item => item.purchased).length;
-    const unpurchasedItems = totalItems - purchasedItems;
-    
     // Log the items being returned
     console.log(`Returning ${items.length} items from saved list`);
-    console.log(`List statistics: total=${totalItems}, purchased=${purchasedItems}, unpurchased=${unpurchasedItems}`);
     
     res.json({
       message: `Applied ${items.length} items from saved list`,
       items: items,
       listId: savedList._id,
-      listName: savedList.name,
-      stats: {
-        total: totalItems,
-        purchased: purchasedItems,
-        unpurchased: unpurchasedItems
-      }
+      listName: savedList.name
     });
   } catch (error) {
     console.error('Error applying saved list:', error);
@@ -200,96 +189,7 @@ const updateSavedList = async (req, res) => {
   }
 };
 
-/**
- * Get statistics for a saved list
- * @route GET /api/saved-lists/:id/stats
- */
-const getSavedListStats = async (req, res) => {
-  try {
-    const listId = req.params.id;
-    const savedList = await SavedList.findById(listId).populate('items');
-    
-    if (!savedList) {
-      return res.status(404).json({ error: 'Saved list not found' });
-    }
-    
-    // Calculate statistics for this list
-    const totalItems = savedList.items.length;
-    const purchasedItems = savedList.items.filter(item => item.purchased).length;
-    const unpurchasedItems = totalItems - purchasedItems;
-    
-    console.log(`Stats for saved list ${savedList.name}: total=${totalItems}, purchased=${purchasedItems}, unpurchased=${unpurchasedItems}`);
-    
-    res.json({
-      total: totalItems,
-      purchased: purchasedItems,
-      unpurchased: unpurchasedItems,
-      listId: savedList._id,
-      listName: savedList.name
-    });
-  } catch (error) {
-    console.error('Error fetching saved list statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch saved list statistics' });
-  }
-};
 
-/**
- * Get statistics for all saved lists
- * @route GET /api/saved-lists/stats/all
- */
-const getAllSavedListsStats = async (req, res) => {
-  try {
-    // Get all saved lists with their items
-    const savedLists = await SavedList.find().populate('items');
-    
-    if (!savedLists || savedLists.length === 0) {
-      return res.json({
-        total: 0,
-        purchased: 0,
-        unpurchased: 0,
-        lists: []
-      });
-    }
-    
-    // Calculate statistics across all lists
-    let totalItems = 0;
-    let totalPurchasedItems = 0;
-    const listsStats = [];
-    
-    // Process each list
-    savedLists.forEach(list => {
-      const listTotalItems = list.items.length;
-      const listPurchasedItems = list.items.filter(item => item.purchased).length;
-      const listUnpurchasedItems = listTotalItems - listPurchasedItems;
-      
-      totalItems += listTotalItems;
-      totalPurchasedItems += listPurchasedItems;
-      
-      // Add this list's stats to the array
-      listsStats.push({
-        listId: list._id,
-        listName: list.name,
-        total: listTotalItems,
-        purchased: listPurchasedItems,
-        unpurchased: listUnpurchasedItems
-      });
-    });
-    
-    const totalUnpurchasedItems = totalItems - totalPurchasedItems;
-    
-    console.log(`Stats for all saved lists: total=${totalItems}, purchased=${totalPurchasedItems}, unpurchased=${totalUnpurchasedItems}, lists=${savedLists.length}`);
-    
-    res.json({
-      total: totalItems,
-      purchased: totalPurchasedItems,
-      unpurchased: totalUnpurchasedItems,
-      lists: listsStats
-    });
-  } catch (error) {
-    console.error('Error fetching all saved lists statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics for all saved lists' });
-  }
-};
 
 module.exports = {
   getAllSavedLists,
@@ -297,7 +197,5 @@ module.exports = {
   createSavedList,
   deleteSavedList,
   applySavedList,
-  updateSavedList,
-  getSavedListStats,
-  getAllSavedListsStats
+  updateSavedList
 };

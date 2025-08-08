@@ -196,59 +196,7 @@ const toggleMultipleItemsPurchased = async (req, res) => {
   }
 };
 
-/**
- * Get item statistics
- * @route GET /api/items/stats
- */
-const getItemStats = async (req, res) => {
-  try {
-    const totalItems = await Item.countDocuments();
-    const purchasedItems = await Item.countDocuments({ purchased: true });
-    const remainingItems = totalItems - purchasedItems;
-    
-    res.json({
-      total: totalItems,
-      purchased: purchasedItems,
-      unpurchased: remainingItems
-    });
-  } catch (error) {
-    console.error('Error fetching item statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-};
 
-/**
- * Get statistics for specific items by IDs
- * @route POST /api/items/stats/by-ids
- */
-const getItemStatsByIds = async (req, res) => {
-  try {
-    const { ids } = req.body;
-    
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'No valid IDs provided' });
-    }
-    
-    // Find all items with the provided IDs
-    const items = await Item.find({ _id: { $in: ids } });
-    
-    // Calculate statistics
-    const totalItems = items.length;
-    const purchasedItems = items.filter(item => item.purchased).length;
-    const remainingItems = totalItems - purchasedItems;
-    
-    console.log(`Stats for ${ids.length} requested IDs: found ${totalItems} items, ${purchasedItems} purchased, ${remainingItems} remaining`);
-    
-    res.json({
-      total: totalItems,
-      purchased: purchasedItems,
-      unpurchased: remainingItems
-    });
-  } catch (error) {
-    console.error('Error fetching item statistics by IDs:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-};
 
 /**
  * Get a single item by ID
@@ -277,7 +225,5 @@ module.exports = {
   toggleItemPurchased,
   deleteMultipleItems,
   toggleMultipleItemsPurchased,
-  getItemStats,
-  getItemStatsByIds,
   getItemById
 };

@@ -7,11 +7,7 @@ import {
   FaCheck, 
   FaUndo,
   FaShoppingBasket,
-  FaListAlt,
-  FaCheckCircle,
-  FaFilter,
-  FaSearch,
-  FaWhatsapp
+  FaFilter
 } from 'react-icons/fa';
 import { CATEGORY_TRANSLATIONS } from '../constants/categoryIcons';
 
@@ -21,13 +17,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   const [selectedItems, setSelectedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [stats, setStats] = useState({
-    total: 0,
-    purchased: 0,
-    unpurchased: 0
-  });
   const [filters, setFilters] = useState({
-    nameFilter: '',
     categoryFilter: ''
   });
 
@@ -67,7 +57,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   useEffect(() => {
     if (!items.length) return;
     
-    const { nameFilter, categoryFilter } = filters;
+    const { categoryFilter } = filters;
     let result = [...items];
     
     // Always filter out purchased items in the shopping page
@@ -79,13 +69,6 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
       localStorage.setItem('tempItems', JSON.stringify(result));
     }
     
-    // Filter by name (case insensitive)
-    if (nameFilter) {
-      result = result.filter(item => 
-        item.name.toLowerCase().includes(nameFilter.toLowerCase())
-      );
-    }
-    
     // Filter by category
     if (categoryFilter) {
       result = result.filter(item => item.category === categoryFilter);
@@ -94,123 +77,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
     setFilteredItems(result);
   }, [items, filters, hideOnPurchase]);
 
-  // Calculate stats from the server based on the current list items
-  useEffect(() => {
-    const fetchStatsFromServer = async () => {
-      try {
-        // First check if we have a saved current list ID
-        const currentListId = localStorage.getItem('currentListId');
-        
-        if (currentListId) {
-          console.log(`Found current list ID in localStorage: ${currentListId}`);
-          
-          // Try to get stats for this saved list directly from the server
-          const savedListStats = await savedListsApi.getSavedListStats(currentListId);
-          
-          if (savedListStats) {
-            console.log("SAVED LIST STATS FROM SERVER:", savedListStats);
-            setStats(savedListStats);
-            return;
-          } else {
-            console.log("Failed to get saved list stats, falling back to cached stats");
-            
-            // Try to use cached stats from localStorage
-            const cachedStats = localStorage.getItem('currentListStats');
-            if (cachedStats) {
-              try {
-                const parsedStats = JSON.parse(cachedStats);
-                console.log("USING CACHED STATS:", parsedStats);
-                setStats(parsedStats);
-                return;
-              } catch (err) {
-                console.error("Failed to parse cached stats:", err);
-              }
-            }
-          }
-        }
-        
-        // If we don't have a saved list ID or failed to get stats, try to calculate from tempItems
-        const tempItems = localStorage.getItem('tempItems');
-        if (!tempItems) {
-          console.log("No items in localStorage for stats");
-          
-          // If there are no items in localStorage, check if we have any saved lists
-          // and use their combined statistics
-          try {
-            const allListsStats = await savedListsApi.getAllSavedListsStats();
-            if (allListsStats) {
-              console.log("ALL SAVED LISTS STATS FROM SERVER:", allListsStats);
-              setStats({
-                total: allListsStats.total,
-                purchased: allListsStats.purchased,
-                unpurchased: allListsStats.unpurchased
-              });
-              return;
-            }
-          } catch (statsErr) {
-            console.error("Failed to get all saved lists stats:", statsErr);
-          }
-          
-          // If all else fails, return zeros
-          setStats({
-            total: 0,
-            purchased: 0,
-            unpurchased: 0
-          });
-          return;
-        }
-        
-        // Parse items from localStorage
-        const allItems = JSON.parse(tempItems);
-        
-        // Get all item IDs
-        const itemIds = allItems.map(item => item._id);
-        
-        if (itemIds.length === 0) {
-          console.log("No item IDs for stats");
-          setStats({
-            total: 0,
-            purchased: 0,
-            unpurchased: 0
-          });
-          return;
-        }
-        
-        // Fetch stats from server for these specific items
-        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
-        
-        if (serverStats) {
-          console.log("ITEM STATS FROM SERVER:", serverStats);
-          setStats(serverStats);
-        } else {
-          // Fallback to local calculation if server request fails
-          const purchasedItems = allItems.filter(item => item.purchased);
-          const purchased = purchasedItems.length;
-          const total = allItems.length;
-          const unpurchased = total - purchased;
-          
-          console.log(`FALLBACK STATS: total=${total}, purchased=${purchased}, unpurchased=${unpurchased}`);
-          
-          setStats({
-            total,
-            purchased,
-            unpurchased
-          });
-        }
-      } catch (err) {
-        console.error("Error fetching stats:", err);
-      }
-    };
-    
-    // Fetch stats when component mounts
-    fetchStatsFromServer();
-    
-    // Set up interval to refresh stats every 5 seconds
-    const intervalId = setInterval(fetchStatsFromServer, 5000);
-    
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [itemsApi, savedListsApi]);
+
 
   // Function to fetch items from API
   const fetchItems = async () => {
@@ -355,13 +222,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
       setItems(data);
       setFilteredItems(data);
       
-      // Calculate stats locally
-      const purchased = data.filter(item => item.purchased).length;
-      setStats({
-        total: data.length,
-        purchased,
-        unpurchased: data.length - purchased
-      });
+
       
       setError(null);
     } catch (err) {
@@ -384,7 +245,6 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   // Reset all filters
   const resetFilters = () => {
     setFilters({
-      nameFilter: '',
       categoryFilter: ''
     });
   };
@@ -470,35 +330,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         setItems(updatedVisibleItems);
       }
       
-      // Get stats from server after toggle
-      try {
-        // Get all item IDs
-        const itemIds = allItems.map(item => item._id);
-        
-        // Fetch stats from server for these specific items
-        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
-        
-        if (serverStats) {
-          console.log("SERVER STATS after toggle:", serverStats);
-          setStats(serverStats);
-        } else {
-          // Fallback to local calculation if server request fails
-          const purchasedItems = allItems.filter(item => item.purchased);
-          const purchased = purchasedItems.length;
-          const total = allItems.length; // סך כל הפריטים נשאר קבוע
-          const unpurchased = total - purchased;
-          
-          console.log(`FALLBACK STATS after toggle: total=${total}, purchased=${purchased}, unpurchased=${unpurchased}`);
-          
-          setStats({
-            total,
-            purchased,
-            unpurchased
-          });
-        }
-      } catch (statsErr) {
-        console.error("Failed to get stats from server:", statsErr);
-      }
+
       
       // Don't call fetchItems() here to prevent UI refresh
       // This prevents the item from reappearing in the shopping list
@@ -608,35 +440,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         setItems(updatedVisibleItems);
       }
       
-      // Get stats from server after bulk update
-      try {
-        // Get all item IDs
-        const itemIds = allItems.map(item => item._id);
-        
-        // Fetch stats from server for these specific items
-        const serverStats = await itemsApi.getItemStatsByIds(itemIds);
-        
-        if (serverStats) {
-          console.log("SERVER STATS after bulk update:", serverStats);
-          setStats(serverStats);
-        } else {
-          // Fallback to local calculation if server request fails
-          const purchasedItems = allItems.filter(item => item.purchased);
-          const purchasedCount = purchasedItems.length;
-          const totalCount = allItems.length; // סך כל הפריטים נשאר קבוע
-          const unpurchasedCount = totalCount - purchasedCount;
-          
-          console.log(`FALLBACK STATS after bulk update: total=${totalCount}, purchased=${purchasedCount}, unpurchased=${unpurchasedCount}`);
-          
-          setStats({
-            total: totalCount,
-            purchased: purchasedCount,
-            unpurchased: unpurchasedCount
-          });
-        }
-      } catch (statsErr) {
-        console.error("Failed to get stats from server:", statsErr);
-      }
+
       
       // Clear selection after marking items
       setSelectedItems([]);
@@ -721,34 +525,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
     );
   };
 
-  // Render shopping statistics
-  const renderShoppingStats = () => {
-    return (
-      <div className="shopping-stats">
-        <div className="stat-item">
-          <FaListAlt className="stat-icon" />
-          <div className="stat-content">
-            <span className="stat-label">סה"כ פריטים:</span>
-            <span className="stat-value">{stats.total}</span>
-          </div>
-        </div>
-        <div className="stat-item">
-          <FaCheckCircle className="stat-icon purchased" />
-          <div className="stat-content">
-            <span className="stat-label">נקנו:</span>
-            <span className="stat-value">{stats.purchased}</span>
-          </div>
-        </div>
-        <div className="stat-item">
-          <FaShoppingBasket className="stat-icon unpurchased" />
-          <div className="stat-content">
-            <span className="stat-label">נותרו לקנות:</span>
-            <span className="stat-value">{stats.unpurchased}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+
 
   // Render filters section
   const renderFilters = () => {
@@ -756,7 +533,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
       <div className="filter-section">
         <div className="filter-title">
           <FaFilter /> סינון פריטים
-          {(filters.nameFilter || filters.categoryFilter) && (
+          {filters.categoryFilter && (
             <button className="btn btn-sm" onClick={resetFilters}>
               נקה סינון
             </button>
@@ -764,22 +541,6 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         </div>
         
         <div className="filter-controls">
-          <div className="filter-group">
-            <label htmlFor="nameFilter" className="filter-label">
-              <FaSearch /> חיפוש לפי שם
-            </label>
-            <input
-              type="text"
-              id="nameFilter"
-              name="nameFilter"
-              value={filters.nameFilter}
-              onChange={handleFilterChange}
-              className="form-input filter-input"
-              placeholder="הקלד שם פריט..."
-              dir="rtl"
-            />
-          </div>
-          
           <div className="filter-group">
             <label htmlFor="categoryFilter" className="filter-label">
               <FaFilter /> סינון לפי קטגוריה
@@ -819,7 +580,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         </div>
       </div>
 
-      {!isLoading && items.length > 0 && renderShoppingStats()}
+
 
       {error && <div className="error-message">{error}</div>}
 
@@ -836,8 +597,8 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="empty-list">
-          <FaSearch size={40} />
-          <p>לא נמצאו פריטים התואמים לחיפוש שלך.</p>
+          <FaFilter size={40} />
+          <p>לא נמצאו פריטים התואמים לסינון שלך.</p>
           <button className="btn btn-primary" onClick={resetFilters}>
             נקה סינון
           </button>

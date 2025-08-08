@@ -70,6 +70,12 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
       // Update the UI
       setSavedLists(savedLists.filter(list => list._id !== id));
       
+      // Always clear items from UI when deleting a list
+      // This ensures items aren't visible anymore after deletion, regardless of current list
+      if (onListApplied) {
+        onListApplied([], null); // Clear items in parent component
+      }
+      
       // If the deleted list is the current list, clear current list
       if (currentList && currentList.id === id) {
         setCurrentList(null);
@@ -78,8 +84,10 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList }) 
         localStorage.removeItem('currentList');
         localStorage.removeItem('currentListId');
         localStorage.removeItem('currentListStats');
-        localStorage.removeItem('tempItems');
       }
+      
+      // Always remove temporary items from localStorage
+      localStorage.removeItem('tempItems');
       
       // Show success notification with item count if available
       if (result.itemsDeleted !== undefined) {

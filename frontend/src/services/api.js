@@ -20,30 +20,7 @@ export const itemsApi = {
     return response.data;
   },
   
-  // Get item statistics
-  getItemStats: async () => {
-    try {
-      const response = await api.get('/items/stats');
-      return response.data;
-    } catch (error) {
-      // If the endpoint fails, return null to trigger local calculation
-      console.warn('Stats endpoint failed, will calculate locally');
-      return null;
-    }
-  },
-  
-  // Get statistics for specific items by IDs
-  getItemStatsByIds: async (itemIds) => {
-    try {
-      console.log(`Fetching stats for ${itemIds.length} items`);
-      const response = await api.post('/items/stats/by-ids', { ids: itemIds });
-      console.log('Stats from server:', response.data);
-      return response.data;
-    } catch (error) {
-      console.warn('Stats by IDs endpoint failed:', error);
-      return null;
-    }
-  },
+
   
   // Add a new item to the shopping list
   addItem: async (item) => {
@@ -109,31 +86,7 @@ export const savedListsApi = {
     return response.data;
   },
   
-  // Get statistics for a saved list
-  getSavedListStats: async (id) => {
-    try {
-      console.log(`Fetching stats for saved list ${id}`);
-      const response = await api.get(`/saved-lists/${id}/stats`);
-      console.log('Saved list stats from server:', response.data);
-      return response.data;
-    } catch (error) {
-      console.warn('Failed to get saved list stats:', error);
-      return null;
-    }
-  },
-  
-  // Get statistics for all saved lists
-  getAllSavedListsStats: async () => {
-    try {
-      console.log('Fetching stats for all saved lists');
-      const response = await api.get('/saved-lists/stats/all');
-      console.log('All saved lists stats from server:', response.data);
-      return response.data;
-    } catch (error) {
-      console.warn('Failed to get all saved lists stats:', error);
-      return null;
-    }
-  },
+
   
   // Create a new saved list
   createSavedList: async (name, itemIds = null) => {
@@ -156,21 +109,15 @@ export const savedListsApi = {
     // Check if we have items and they're properly formatted
     if (response.data && response.data.items) {
       // Make sure all items have their purchased status properly set
-      // This is important because we're no longer creating new items in the backend
       const items = response.data.items.map(item => ({
         ...item,
-        // Keep the existing purchased status
       }));
       
       console.log(`Processed ${items.length} items from saved list`);
       
-      // Save the list ID and stats to localStorage for persistence
+      // Save the list ID to localStorage for persistence
       if (response.data.listId) {
         localStorage.setItem('currentListId', response.data.listId);
-        
-        if (response.data.stats) {
-          localStorage.setItem('currentListStats', JSON.stringify(response.data.stats));
-        }
       }
       
       return {
