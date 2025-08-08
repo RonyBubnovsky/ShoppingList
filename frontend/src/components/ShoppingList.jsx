@@ -20,6 +20,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   const [savedLists, setSavedLists] = useState([]);
   const [selectedList, setSelectedList] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     categoryFilter: ''
@@ -33,11 +34,14 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   // Load saved lists from API
   const loadSavedLists = async () => {
     try {
+      setIsLoadingSavedLists(true);
       const lists = await savedListsApi.getAllSavedLists();
       setSavedLists(lists);
     } catch (err) {
       console.error('Failed to load saved lists:', err);
       setError('טעינת רשימות שמורות נכשלה');
+    } finally {
+      setIsLoadingSavedLists(false);
     }
   };
 
@@ -341,7 +345,9 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
             <p>בחר רשימה קיימת כדי להתחיל בקניות</p>
           </div>
           
-          {savedLists.length === 0 ? (
+          {isLoadingSavedLists ? (
+            <div className="loading">טוען רשימות...</div>
+          ) : savedLists.length === 0 ? (
             <div className="no-lists">
               <p>אין רשימות שמורות. צור רשימה חדשה בדף הראשי.</p>
             </div>
