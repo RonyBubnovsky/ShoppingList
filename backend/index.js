@@ -30,6 +30,12 @@ app.get('/api/categories', (req, res) => {
   });
 });
 
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+
 // Local development server only
 if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
