@@ -141,28 +141,15 @@ const applySavedList = async (req, res) => {
     
     console.log(`Applying saved list ${savedList.name} with ${savedList.items.length} items`);
     
-    // Create new items based on the saved list items, but assign the current list context
-    // This ensures items are properly tracked per list context
-    const items = [];
-    
-    for (const item of savedList.items) {
-      // Create a new item with the same properties but with the current list context
-      const newItem = new Item({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        category: item.category,
-        purchased: false, // Reset purchased status when applying a saved list
-        imageUrl: item.imageUrl,
-        listContext: savedList._id // Associate with the saved list ID
-      });
-      
-      const savedItem = await newItem.save();
-      items.push(savedItem);
-    }
+    // Just return the existing items from the saved list
+    // Don't create new items to avoid duplicates in the database
+    const items = savedList.items.map(item => ({
+      ...item.toObject(),
+      purchased: false // Reset purchased status when applying a saved list
+    }));
     
     // Log the items being returned
-    console.log(`Created ${items.length} new items with list context from saved list`);
+    console.log(`Returning ${items.length} existing items from saved list`);
     
     res.json({
       message: `Applied ${items.length} items from saved list`,

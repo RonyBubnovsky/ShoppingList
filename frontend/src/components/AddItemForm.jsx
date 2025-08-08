@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { itemsApi } from '../services/api';
 import { FaPlus, FaCartPlus, FaMagic } from 'react-icons/fa';
 
@@ -6,6 +6,51 @@ function AddItemForm({ onItemAdded }) {
   const [freeText, setFreeText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Force refresh items with null listContext whenever the component mounts
+  // This ensures proper synchronization between pages
+  useEffect(() => {
+    const refreshItems = async () => {
+      try {
+        // Check if we're in "new list" mode (just created a list)
+        const isNewList = localStorage.getItem('newList');
+        
+        // If we're in new list mode, don't load items - let the parent handle it
+        if (isNewList === 'true') {
+          console.log('AddItemForm: In new list mode, skipping item refresh');
+          return;
+        }
+        
+        // Check if parent already has items loaded
+        const tempItems = localStorage.getItem('tempItems');
+        if (tempItems) {
+          try {
+            const existingItems = JSON.parse(tempItems);
+            if (existingItems.length > 0) {
+              console.log('AddItemForm: Parent already has items, skipping refresh');
+              return;
+            }
+          } catch (err) {
+            console.error('Failed to parse existing tempItems:', err);
+          }
+        }
+        
+        // Explicitly get items with null listContext (main list)
+        const currentItems = await itemsApi.getAllItems(null);
+        console.log(`AddItemForm: Found ${currentItems.length} items with null listContext`);
+        
+        // Only update if we have items and the callback exists
+        if (currentItems && currentItems.length > 0 && onItemAdded) {
+          // Pass the items directly to parent component
+          onItemAdded(currentItems);
+        }
+      } catch (err) {
+        console.error('Error refreshing items in AddItemForm:', err);
+      }
+    };
+    
+    refreshItems();
+  }, [onItemAdded]);
 
   const handleChange = (e) => {
     setFreeText(e.target.value);

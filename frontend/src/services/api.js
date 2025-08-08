@@ -17,9 +17,11 @@ export const itemsApi = {
   // Get all shopping list items
   getAllItems: async (listContextId = null) => {
     let url = '/items';
-    if (listContextId) {
-      url += `?listContext=${listContextId}`;
-    }
+    
+    // If listContextId is explicitly null, we want items with no list context
+    // If defined, we want items for that specific list
+    url += `?listContext=${listContextId === null ? 'null' : listContextId}`;
+    
     const response = await api.get(url);
     return response.data;
   },
@@ -28,14 +30,9 @@ export const itemsApi = {
   
   // Add a new item to the shopping list
   addItem: async (item) => {
-    // Get the current listContextId from localStorage if available
-    const currentListId = localStorage.getItem('currentListId');
-    
-    // If we have a current list ID and the item doesn't specify its own listContextId,
-    // add the currentListId to the item
-    if (currentListId && !item.listContextId) {
-      item.listContextId = currentListId;
-    }
+    // Only add listContextId if it's explicitly provided in the item
+    // Don't automatically take from localStorage as this causes issues
+    // when adding items to the main list (which should have null listContext)
     
     const response = await api.post('/items', item);
     return response.data;
@@ -43,14 +40,23 @@ export const itemsApi = {
   
   // Parse free text and add item to the shopping list
   parseAndAddItem: async (text) => {
-    // Get the current listContextId from localStorage if available
-    const currentListId = localStorage.getItem('currentListId');
+    // Only add listContextId if we're explicitly working with a saved list
+    // Check if there's a saved list loaded and not just some random ID
+    const currentList = localStorage.getItem('currentList');
     
     let data = { text };
     
-    // If we have a current list ID, add it to the request
-    if (currentListId) {
-      data.listContextId = currentListId;
+    // Only add listContextId if we have a proper saved list loaded
+    if (currentList) {
+      try {
+        const listInfo = JSON.parse(currentList);
+        if (listInfo && listInfo.id) {
+          data.listContextId = listInfo.id;
+        }
+      } catch (err) {
+        console.error('Failed to parse currentList from localStorage:', err);
+        // Don't add listContextId if we can't parse the list info
+      }
     }
     
     const response = await api.post('/parse/add', data);
@@ -103,6 +109,16 @@ export const savedListsApi = {
     return response.data;
   },
   
+  // Get stats about all saved lists (for UI)
+  getAllSavedListsStats: async () => {
+    const lists = await savedListsApi.getAllSavedLists();
+    return {
+      lists,
+      total: lists.length,
+      hasLists: lists.length > 0
+    };
+  },
+  
   // Get a saved list by ID
   getSavedListById: async (id) => {
     const response = await api.get(`/saved-lists/${id}`);
@@ -138,10 +154,8 @@ export const savedListsApi = {
       
       console.log(`Processed ${items.length} items from saved list`);
       
-      // Save the list ID to localStorage for persistence
-      if (response.data.listId) {
-        localStorage.setItem('currentListId', response.data.listId);
-      }
+      // Don't save currentListId separately - this causes issues with new items
+      // The currentList object should be saved by the component using this function
       
       return {
         ...response.data,

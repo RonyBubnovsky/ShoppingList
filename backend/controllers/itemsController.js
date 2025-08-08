@@ -14,13 +14,22 @@ const getAllItems = async (req, res) => {
     
     // If listContext is provided, filter by it
     if (listContext) {
-      query.listContext = listContext;
+      // Special case: if 'null' as string is passed, convert to actual null
+      if (listContext === 'null') {
+        query.listContext = null;
+        console.log('Backend: Fetching items with null listContext');
+      } else {
+        query.listContext = listContext;
+        console.log(`Backend: Fetching items with listContext=${listContext}`);
+      }
     } else {
       // Otherwise get only items with no list context (main shopping list)
       query.listContext = null;
+      console.log('Backend: No listContext specified, defaulting to null');
     }
     
     const items = await Item.find(query).sort({ createdAt: -1 });
+    console.log(`Backend: Found ${items.length} items matching query:`, query);
     res.json(items);
   } catch (error) {
     console.error('Error fetching items:', error);

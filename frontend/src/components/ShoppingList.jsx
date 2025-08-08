@@ -571,12 +571,14 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
       <div className="shopping-list-header">
         <h2 className="shopping-list-title">פריטים ברשימה</h2>
         <div className="header-actions">
-          <button className="btn btn-primary" onClick={handleSelectAll}>
-            {selectedItems.length === items.length && items.length > 0
-              ? 'בטל בחירה'
-              : 'בחר הכל'
-            }
-          </button>
+          {items.length > 0 && (
+            <button className="btn btn-primary" onClick={handleSelectAll}>
+              {selectedItems.length === items.length && items.length > 0
+                ? 'בטל בחירה'
+                : 'בחר הכל'
+              }
+            </button>
+          )}
         </div>
       </div>
 
