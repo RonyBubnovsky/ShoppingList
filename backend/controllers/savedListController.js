@@ -8,7 +8,19 @@ const Item = require('../models/Item');
 const getAllSavedLists = async (req, res) => {
   try {
     const savedLists = await SavedList.find().sort({ createdAt: -1 });
-    res.json(savedLists);
+    
+    // For each saved list, get the actual count of items from the Items collection
+    const listsWithCounts = await Promise.all(
+      savedLists.map(async (list) => {
+        const itemsCount = await Item.countDocuments({ listContext: list._id });
+        return {
+          ...list.toObject(),
+          itemsCount
+        };
+      })
+    );
+    
+    res.json(listsWithCounts);
   } catch (error) {
     console.error('Error fetching saved lists:', error);
     res.status(500).json({ error: 'Failed to fetch saved lists' });

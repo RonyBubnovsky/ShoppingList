@@ -81,6 +81,17 @@ const parseAndAddItem = async (req, res) => {
           
           const savedItem = await newItem.save();
           
+          // If this item was created with a listContext (saved list), add it to the saved list
+          if (listContextId) {
+            const SavedList = require('../models/SavedList');
+            await SavedList.findByIdAndUpdate(
+              listContextId,
+              { $push: { items: savedItem._id } },
+              { new: true }
+            );
+            console.log(`Added new item ${savedItem._id} to saved list ${listContextId}`);
+          }
+          
           results.push({
             ...savedItem.toObject(),
             parsed: parsedItem,

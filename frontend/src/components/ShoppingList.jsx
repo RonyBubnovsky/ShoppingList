@@ -204,6 +204,9 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
   // Handle when a new item is added from the form
   const handleItemAdded = (newItem) => {
     setItems([newItem, ...items]);
+    
+    // Refresh saved lists to update item counts
+    loadSavedLists();
   };
 
   // Share shopping list via WhatsApp
@@ -355,7 +358,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true }) {
                     <h4>{list.name}</h4>
                   </div>
                   <div className="list-card-info">
-                    <p>{list.items?.length || 0} פריטים</p>
+                    <p>{list.itemsCount || list.items?.length || 0} פריטים</p>
                     <small>{new Date(list.createdAt).toLocaleDateString('he-IL')}</small>
                   </div>
                 </div>
