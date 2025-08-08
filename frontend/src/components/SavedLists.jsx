@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
 import { showNotification, NOTIFICATION_TYPES } from './Notification';
@@ -9,6 +9,7 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
   const [error, setError] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [currentList, setCurrentList] = useState(null);
+  const containerRef = useRef(null);
   
   // Sync with parent component's currentList prop
   useEffect(() => {
@@ -26,6 +27,22 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
       fetchSavedLists();
     }
   }, [refreshVersion]);
+
+  // Close dropdown when clicking outside the component
+  useEffect(() => {
+    if (!showDropdown) return;
+
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   // Fetch all saved lists
   const fetchSavedLists = async () => {
@@ -117,7 +134,7 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
   };
 
   return (
-    <div className="saved-lists">
+    <div className="saved-lists" ref={containerRef}>
       <button 
         className={`btn saved-lists-btn ${currentList ? 'active-list' : ''}`}
         onClick={toggleDropdown}
