@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ShoppingItem from './ShoppingItem';
 import { itemsApi, savedListsApi } from '../services/api';
 import { CATEGORIES } from '../constants/categories';
+import { showNotification, NOTIFICATION_TYPES } from './Notification';
 import { 
   FaTrash, 
   FaCheck, 
@@ -134,15 +135,21 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       if (hideOnPurchase && updatedItem.purchased) {
         setItems(items.filter(item => item._id !== id));
         setSelectedItems(prev => prev.filter(itemId => itemId !== id));
+        showNotification(`הפריט "${updatedItem.name}" סומן כנקנה`, NOTIFICATION_TYPES.SUCCESS);
       } else {
         // Regular update for non-purchased items or in main page
         setItems(items.map(item => 
           item._id === id ? updatedItem : item
         ));
+        const msg = updatedItem.purchased
+          ? `הפריט "${updatedItem.name}" סומן כנקנה`
+          : `הפריט "${updatedItem.name}" סומן כלא נקנה`;
+        showNotification(msg, NOTIFICATION_TYPES.SUCCESS);
       }
     } catch (err) {
       console.error('Failed to update item:', err);
       setError('עדכון סטטוס הפריט נכשל. נא לנסות שוב.');
+      showNotification('עדכון סטטוס הפריט נכשל', NOTIFICATION_TYPES.ERROR);
     }
   };
 
@@ -175,16 +182,10 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       await itemsApi.deleteMultipleItems(selectedItems);
       setItems(items.filter(item => !selectedItems.includes(item._id)));
       setSelectedItems([]);
-      // Use global notification component to inform user
-      try {
-        const { showNotification, NOTIFICATION_TYPES } = await import('./Notification');
-        showNotification(
-          `${deletedCount === 1 ? 'פריט אחד נמחק' : `${deletedCount} פריטים נמחקו`} בהצלחה`,
-          NOTIFICATION_TYPES.SUCCESS
-        );
-      } catch (e) {
-        // no-op if Notification import fails
-      }
+      showNotification(
+        `${deletedCount === 1 ? 'פריט אחד נמחק' : `${deletedCount} פריטים נמחקו`} בהצלחה`,
+        NOTIFICATION_TYPES.SUCCESS
+      );
     } catch (err) {
       console.error('Failed to delete items:', err);
       setError('מחיקת הפריטים שנבחרו נכשלה. נא לנסות שוב.');
@@ -208,11 +209,17 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
         )));
       }
       
+      const message = purchased 
+        ? `${selectedItems.length} פריטים סומנו כנקנו`
+        : `${selectedItems.length} פריטים סומנו כלא נקנו`;
+      showNotification(message, NOTIFICATION_TYPES.SUCCESS);
+
       // Clear selection after marking items
       setSelectedItems([]);
     } catch (err) {
       console.error('Failed to update items:', err);
       setError('עדכון הפריטים שנבחרו נכשל. נא לנסות שוב.');
+      showNotification('עדכון הפריטים שנבחרו נכשל', NOTIFICATION_TYPES.ERROR);
     }
   };
 

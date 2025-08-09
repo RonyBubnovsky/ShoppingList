@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { FaArrowRight } from 'react-icons/fa';
 import Header from '../components/Header';
+import Notification from '../components/Notification';
 import ShoppingList from '../components/ShoppingList';
 
 function ShoppingPage() {
@@ -16,6 +17,7 @@ function ShoppingPage() {
       <main className="container">
         <ShoppingList hideOnPurchase={true} showDeleteButton={false} showMarkUnpurchased={false} />
       </main>
+      <Notification />
     </div>
   );
 }
