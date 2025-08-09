@@ -218,7 +218,13 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
 
   // Handle when a new item is added from the form
   const handleItemAdded = (newItem) => {
-    setItems([newItem, ...items]);
+    setItems((previousItems) => {
+      const exists = previousItems.some((item) => item._id === newItem._id);
+      if (exists) {
+        return previousItems.map((item) => (item._id === newItem._id ? newItem : item));
+      }
+      return [newItem, ...previousItems];
+    });
     
     // Refresh saved lists to update item counts
     loadSavedLists();

@@ -64,8 +64,14 @@ function MainPage() {
   // Callback for when an item is added
   const handleItemAdded = useCallback((newItem) => {
     if (newItem) {
-      // Add the new item to the list
-      setItems(prev => [newItem, ...prev]);
+      // If the item already exists (same _id), replace it instead of adding a duplicate
+      setItems((previousItems) => {
+        const existingIndex = previousItems.findIndex((item) => item._id === newItem._id);
+        if (existingIndex !== -1) {
+          return previousItems.map((item) => (item._id === newItem._id ? newItem : item));
+        }
+        return [newItem, ...previousItems];
+      });
     } else {
       // Refresh the list from database
       loadItems();
