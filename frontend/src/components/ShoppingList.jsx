@@ -20,6 +20,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
   const [selectedItems, setSelectedItems] = useState([]);
   const [savedLists, setSavedLists] = useState([]);
   const [selectedList, setSelectedList] = useState(null);
+  const [allListItems, setAllListItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const [error, setError] = useState(null);
@@ -59,6 +60,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       if (result && result.items) {
         const list = savedLists.find(l => l._id === listId);
         setSelectedList(list);
+        setAllListItems(result.items);
         
         // If hideOnPurchase is true (shopping page), filter out purchased items
         let itemsToShow = result.items;
@@ -220,6 +222,24 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       console.error('Failed to update items:', err);
       setError('עדכון הפריטים שנבחרו נכשל. נא לנסות שוב.');
       showNotification('עדכון הפריטים שנבחרו נכשל', NOTIFICATION_TYPES.ERROR);
+    }
+  };
+
+  // Reset all items in the selected list to unpurchased
+  const handleResetAllToUnpurchased = async () => {
+    try {
+      const ids = (allListItems || []).map(item => item._id);
+      if (!ids.length) return;
+      await itemsApi.updateMultipleItems(ids, false);
+      const resetItems = allListItems.map(item => ({ ...item, purchased: false }));
+      setAllListItems(resetItems);
+      setItems(resetItems);
+      setSelectedItems([]);
+      showNotification('כל הפריטים אופסו כלא נקנו', NOTIFICATION_TYPES.SUCCESS);
+    } catch (err) {
+      console.error('Failed to reset items:', err);
+      setError('איפוס הפריטים נכשל. נא לנסות שוב.');
+      showNotification('איפוס הפריטים נכשל', NOTIFICATION_TYPES.ERROR);
     }
   };
 
@@ -407,6 +427,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
               onClick={() => {
                 setSelectedList(null);
                 setItems([]);
+                setAllListItems([]);
               }}
             >
               בחר רשימה אחרת
@@ -423,6 +444,11 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
             <div className="empty-list">
               <FaShoppingBasket size={40} />
               <p>הרשימה ריקה או שכל הפריטים נקנו.</p>
+              {hideOnPurchase && selectedList && allListItems.length > 0 && (
+                <button className="btn btn-primary" onClick={handleResetAllToUnpurchased}>
+                  <FaUndo /> אפס פריטים לרשימה
+                </button>
+              )}
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="empty-list">
