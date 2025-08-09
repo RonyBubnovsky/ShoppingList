@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { itemsApi } from '../services/api';
+import { showNotification, NOTIFICATION_TYPES } from './Notification';
 import { FaPlus, FaCartPlus, FaMagic } from 'react-icons/fa';
 
 function AddItemForm({ onItemAdded, currentList }) {
@@ -40,13 +41,40 @@ function AddItemForm({ onItemAdded, currentList }) {
         result.items.forEach(item => {
           onItemAdded(item);
         });
+
+        // Notify user
+        const total = result.items.length;
+        const createdCount = result.items.filter(i => i.action === 'created').length;
+        const updatedCount = result.items.filter(i => i.action === 'updated').length;
+        if (total === 1) {
+          const single = result.items[0];
+          const name = single.name;
+          if (single.action === 'updated') {
+            showNotification(`הכמות עבור "${name}" עודכנה`, NOTIFICATION_TYPES.SUCCESS);
+          } else {
+            showNotification(`הפריט "${name}" נוסף בהצלחה`, NOTIFICATION_TYPES.SUCCESS);
+          }
+        } else {
+          if (createdCount > 0 && updatedCount > 0) {
+            showNotification(`נוספו ${createdCount} פריטים חדשים ועודכנו ${updatedCount} פריטים קיימים`, NOTIFICATION_TYPES.SUCCESS);
+          } else if (createdCount > 0) {
+            showNotification(`נוספו ${createdCount} פריטים חדשים`, NOTIFICATION_TYPES.SUCCESS);
+          } else if (updatedCount > 0) {
+            showNotification(`עודכנו ${updatedCount} פריטים קיימים`, NOTIFICATION_TYPES.SUCCESS);
+          } else {
+            showNotification(`נוספו/עודכנו ${total} פריטים`, NOTIFICATION_TYPES.SUCCESS);
+          }
+        }
       } else {
         console.log("No items returned from API");
+        showNotification('לא נמצאו פריטים להוספה', NOTIFICATION_TYPES.INFO);
         onItemAdded();
       }
     } catch (error) {
       console.error('Error parsing and adding item:', error);
-      setError('שגיאה בעיבוד הטקסט. אנא נסה שוב.');
+      const message = 'שגיאה בעיבוד הטקסט. אנא נסה שוב.';
+      setError(message);
+      showNotification(message, NOTIFICATION_TYPES.ERROR);
     } finally {
       setIsLoading(false);
     }
