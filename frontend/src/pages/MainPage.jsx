@@ -268,10 +268,27 @@ function MainPage() {
     }
   };
   
-  // Handle when a saved list is applied
+  // Handle when a saved list is applied or when deletion signals to return to main list
   const handleSavedListApplied = (newItems, listInfo) => {
+    // Special signal from SavedLists: (null, null) means reload main list (listContext=null)
+    if (newItems === null && listInfo === null) {
+      (async () => {
+        try {
+          const allItems = await itemsApi.getAllItems(null);
+          setItems(allItems);
+        } catch (err) {
+          console.error('Failed to reload main list items after deletion:', err);
+          setItems([]);
+        } finally {
+          setSelectedItems([]);
+          setCurrentList(null);
+        }
+      })();
+      return;
+    }
+
     // Replace items state completely with the new items
-    setItems(newItems);
+    setItems(newItems || []);
     
     // Clear any selected items
     setSelectedItems([]);

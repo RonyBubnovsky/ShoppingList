@@ -93,15 +93,13 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
       
       // Update the UI
       setSavedLists(savedLists.filter(list => list._id !== id));
-      
-      // Always clear items from UI when deleting a list
-      // This ensures items aren't visible anymore after deletion, regardless of current list
-      if (onListApplied) {
-        onListApplied([], null); // Clear items in parent component
-      }
-      
-      // If the deleted list is the current list, clear current list
+
+      // If the deleted list is the current active list, clear items in parent and reset current list
       if (currentList && currentList.id === id) {
+        if (onListApplied) {
+          // Pass null to signal parent to reload main list items (listContext=null)
+          onListApplied(null, null);
+        }
         setCurrentList(null);
       }
       
