@@ -27,6 +27,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
   const [filters, setFilters] = useState({
     categoryFilter: ''
   });
+  const [unassignedItemsCount, setUnassignedItemsCount] = useState(0);
 
   // Load saved lists when component mounts
   useEffect(() => {
@@ -39,6 +40,12 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       setIsLoadingSavedLists(true);
       const lists = await savedListsApi.getAllSavedLists();
       setSavedLists(lists);
+      // Also fetch count of items with no list context
+      const unassigned = await itemsApi.getAllItems(null);
+      const countToShow = hideOnPurchase
+        ? unassigned.filter(item => !item.purchased).length
+        : unassigned.length;
+      setUnassignedItemsCount(countToShow);
     } catch (err) {
       console.error('Failed to load saved lists:', err);
       setError('טעינת רשימות שמורות נכשלה');
@@ -73,6 +80,27 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
     } catch (err) {
       console.error('Failed to load list items:', err);
       setError('טעינת פריטי הרשימה נכשלה');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Load items that are not assigned to any saved list (listContext=null)
+  const loadUnassignedItems = async () => {
+    try {
+      setIsLoading(true);
+      const result = await itemsApi.getAllItems(null);
+      // Mark selected list as a pseudo list representing unassigned items
+      setSelectedList({ _id: 'unassigned', name: 'פריטים ללא רשימה', isUnassigned: true });
+      setAllListItems(result);
+      let itemsToShow = result;
+      if (hideOnPurchase) {
+        itemsToShow = result.filter(item => !item.purchased);
+      }
+      setItems(itemsToShow);
+    } catch (err) {
+      console.error('Failed to load unassigned items:', err);
+      setError('טעינת פריטים ללא רשימה נכשלה');
     } finally {
       setIsLoading(false);
     }
@@ -393,12 +421,27 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
           
           {isLoadingSavedLists ? (
             <div className="loading">טוען רשימות...</div>
-          ) : savedLists.length === 0 ? (
+          ) : (savedLists.length === 0 && unassignedItemsCount === 0) ? (
             <div className="no-lists">
               <p>אין רשימות שמורות. צור רשימה חדשה בדף הראשי.</p>
             </div>
           ) : (
             <div className="lists-grid">
+              {unassignedItemsCount > 0 && (
+                <div 
+                  className="list-card"
+                  onClick={loadUnassignedItems}
+                >
+                  <div className="list-card-header">
+                    <FaShoppingBasket />
+                    <h4>פריטים ללא רשימה</h4>
+                  </div>
+                  <div className="list-card-info">
+                    <p>{unassignedItemsCount} פריטים</p>
+                    <small>רשימת קניות פעילה</small>
+                  </div>
+                </div>
+              )}
               {savedLists.map((list) => (
                 <div 
                   key={list._id} 
@@ -428,6 +471,8 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
                 setSelectedList(null);
                 setItems([]);
                 setAllListItems([]);
+                // Refresh saved lists and unassigned count when returning to selector
+                loadSavedLists();
               }}
             >
               בחר רשימה אחרת
