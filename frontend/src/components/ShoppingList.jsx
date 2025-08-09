@@ -171,9 +171,20 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
     if (selectedItems.length === 0) return;
     
     try {
+      const deletedCount = selectedItems.length;
       await itemsApi.deleteMultipleItems(selectedItems);
       setItems(items.filter(item => !selectedItems.includes(item._id)));
       setSelectedItems([]);
+      // Use global notification component to inform user
+      try {
+        const { showNotification, NOTIFICATION_TYPES } = await import('./Notification');
+        showNotification(
+          `${deletedCount === 1 ? 'פריט אחד נמחק' : `${deletedCount} פריטים נמחקו`} בהצלחה`,
+          NOTIFICATION_TYPES.SUCCESS
+        );
+      } catch (e) {
+        // no-op if Notification import fails
+      }
     } catch (err) {
       console.error('Failed to delete items:', err);
       setError('מחיקת הפריטים שנבחרו נכשלה. נא לנסות שוב.');

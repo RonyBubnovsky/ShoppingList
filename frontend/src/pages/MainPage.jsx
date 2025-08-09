@@ -72,6 +72,15 @@ function MainPage() {
     }
   }, [loadItems]);
 
+  // If all items were removed while a saved list is applied, clear the current list context
+  useEffect(() => {
+    if (currentList && items.length === 0) {
+      setCurrentList(null);
+      // Optionally notify SavedLists to refresh UI if needed elsewhere
+      setSavedListsVersion(v => v + 1);
+    }
+  }, [items, currentList]);
+
   // Handle delete item
   const handleDeleteItem = async (id) => {
     try {
@@ -136,9 +145,14 @@ function MainPage() {
     if (selectedItems.length === 0) return;
     
     try {
+      const deletedCount = selectedItems.length;
       await itemsApi.deleteMultipleItems(selectedItems);
       setItems(items.filter(item => !selectedItems.includes(item._id)));
       setSelectedItems([]);
+      showNotification(
+        `${deletedCount === 1 ? 'פריט אחד נמחק' : `${deletedCount} פריטים נמחקו`} בהצלחה`,
+        NOTIFICATION_TYPES.SUCCESS
+      );
     } catch (err) {
       console.error('Failed to delete items:', err);
     }
