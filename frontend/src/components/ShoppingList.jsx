@@ -287,17 +287,16 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
 
   // Share shopping list via WhatsApp
   const handleShareWhatsApp = () => {
-    // Filter items to show only unpurchased ones (items to buy)
-    const itemsToBuy = filteredItems.filter(item => !item.purchased);
-    
+    // Always include all items (purchased and not). Prefer full list if available
+    const listForShare = (allListItems && allListItems.length > 0) ? allListItems : items;
     let message = "רשימת קניות:\n\n";
-    
-    if (itemsToBuy.length > 0) {
-      itemsToBuy.forEach((item, index) => {
-        message += `${index + 1}. ${item.name} - ${item.quantity} ${item.unit}\n`;
+    if (listForShare.length > 0) {
+      listForShare.forEach((item, index) => {
+        const statusLabel = item.purchased ? 'נקנה' : 'לא נקנה';
+        message += `${index + 1}. ${item.name} - ${item.quantity} ${item.unit} (${statusLabel})\n`;
       });
     } else {
-      message += "כל הפריטים כבר נקנו!";
+      message += "רשימת הקניות ריקה!";
     }
     
     // Encode the message for URL

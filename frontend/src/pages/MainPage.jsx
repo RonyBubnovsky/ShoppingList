@@ -171,14 +171,11 @@ function MainPage() {
   
   // Share shopping list via WhatsApp
   const handleShareWhatsApp = () => {
-    // Filter items to show only unpurchased ones (items to buy)
-    const itemsToBuy = items.filter(item => !item.purchased);
-    
     let message = "רשימת קניות:\n\n";
-    
-    if (itemsToBuy.length > 0) {
-      itemsToBuy.forEach((item, index) => {
-        message += `${index + 1}. ${item.name} - ${item.quantity} ${item.unit}\n`;
+    if (items.length > 0) {
+      items.forEach((item, index) => {
+        const statusLabel = item.purchased ? 'נקנה' : 'לא נקנה';
+        message += `${index + 1}. ${item.name} - ${item.quantity} ${item.unit} (${statusLabel})\n`;
       });
     } else {
       message += "רשימת הקניות ריקה!";
