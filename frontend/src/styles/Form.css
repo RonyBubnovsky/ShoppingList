@@ -60,8 +60,12 @@
 }
 
 .form-group-submit {
-  inline-size: 160px;
+  inline-size: auto;
+  min-inline-size: 220px;
   display: flex;
+  gap: var(--spacing-xs);
+  align-items: stretch;
+  justify-content: stretch;
 }
 
 /* Input */
@@ -108,6 +112,23 @@
   box-shadow: 0 2px 6px var(--shadow-color);
 }
 
+/* Inside the submit group, allow buttons to sit side-by-side with spacing */
+.form-group-submit .submit-btn {
+  width: auto;
+  flex: 1 1 0;
+}
+
+/* Secondary style for microphone button */
+.submit-btn.mic-btn {
+  background-color: transparent;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.submit-btn.mic-btn:disabled {
+  opacity: 0.7;
+}
+
 .submit-btn svg {
   font-size: 1.05rem;
 }
@@ -138,7 +159,7 @@
     grid-template-columns: 1fr 140px;
     gap: var(--spacing-sm);
   }
-  .form-group-submit { inline-size: 140px; }
+  .form-group-submit { min-inline-size: 180px; }
 }
 
 @media (max-width: 576px) {
@@ -148,11 +169,12 @@
   .free-text-form {
     grid-template-columns: 1fr; /* stack */
   }
-  .form-group-submit { inline-size: 100%; }
+  .form-group-submit { inline-size: 100%; min-inline-size: 0; }
   .submit-btn { min-height: 52px; }
 }
 
 @media (max-width: 400px) {
   .form-title { font-size: 1.1rem; }
   .free-text-hint { font-size: 0.9rem; }
+  .form-group-submit { flex-direction: column; }
 }
