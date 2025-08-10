@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSave, FaShoppingCart, FaTrash, FaCheck, FaWhatsapp, FaUndo, FaPlus } from 'react-icons/fa';
+import { FaSave, FaTrash, FaCheck, FaWhatsapp, FaUndo, FaPlus } from 'react-icons/fa';
 import Header from '../components/Header';
 import AddItemForm from '../components/AddItemForm';
 import SavedLists from '../components/SavedLists';
@@ -164,11 +164,6 @@ function MainPage() {
     }
   };
 
-  // Go to shopping list
-  const goToShoppingList = () => {
-    navigate('/shopping-list');
-  };
-  
   // Share shopping list via WhatsApp
   const handleShareWhatsApp = () => {
     let message = "רשימת קניות:\n\n";
@@ -495,12 +490,6 @@ function MainPage() {
                     title="שתף רשימה בווצאפ"
                   >
                     <FaWhatsapp /> שתף בווצאפ
-                  </button>
-                  <button 
-                    className="btn go-shopping-btn" 
-                    onClick={goToShoppingList}
-                  >
-                    <FaShoppingCart /> צא לקניות
                   </button>
                 </>
               )}

@@ -40,12 +40,9 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       setIsLoadingSavedLists(true);
       const lists = await savedListsApi.getAllSavedLists();
       setSavedLists(lists);
-      // Also fetch count of items with no list context
+      // Also fetch count of items with no list context (total, including purchased)
       const unassigned = await itemsApi.getAllItems(null);
-      const countToShow = hideOnPurchase
-        ? unassigned.filter(item => !item.purchased).length
-        : unassigned.length;
-      setUnassignedItemsCount(countToShow);
+      setUnassignedItemsCount(unassigned.length);
     } catch (err) {
       console.error('Failed to load saved lists:', err);
       setError('טעינת רשימות שמורות נכשלה');
@@ -487,7 +484,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
           ) : items.length === 0 ? (
             <div className="empty-list">
               <FaShoppingBasket size={40} />
-              <p>הרשימה ריקה או שכל הפריטים נקנו.</p>
+              <p>כל הפריטים נקנו.</p>
               {hideOnPurchase && selectedList && allListItems.length > 0 && (
                 <button className="btn btn-primary" onClick={handleResetAllToUnpurchased}>
                   <FaUndo /> אפס פריטים לרשימה
