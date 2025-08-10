@@ -23,13 +23,6 @@ app.use('/api/items', itemRoutes);
 app.use('/api/parse', parseRoutes);
 app.use('/api/saved-lists', savedListRoutes);
 
-// This endpoint intentionally returns 410 to indicate the responsibility moved to the frontend
-app.get('/api/categories', (req, res) => {
-  res.status(410).json({
-    message: 'Categories are now handled at the frontend level. Please update your application.'
-  });
-});
-
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
