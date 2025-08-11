@@ -50,19 +50,7 @@ function MainPage() {
     loadItems();
   }, [loadItems]);
 
-  // Refresh items when user returns to this page (e.g., from shopping page)
-  useEffect(() => {
-    const handleFocus = () => {
-      console.log('MainPage: Window focused, refreshing items and saved lists');
-      loadItems();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [loadItems]);
+  // Removed focus-based refresh to avoid unnecessary API calls when returning to the tab
 
   // Receive saved lists count from child component to avoid duplicate API calls
   const handleSavedListsLoaded = useCallback((count) => {
