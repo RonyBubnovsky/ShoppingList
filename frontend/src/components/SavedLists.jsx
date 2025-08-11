@@ -3,7 +3,7 @@ import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
 import { showNotification, NOTIFICATION_TYPES } from './Notification';
 
-function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion }) {
+function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion, onListsLoaded }) {
   const [savedLists, setSavedLists] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,11 +15,6 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
   useEffect(() => {
     setCurrentList(propCurrentList);
   }, [propCurrentList]);
-
-  // Fetch saved lists when component mounts
-  useEffect(() => {
-    fetchSavedLists();
-  }, []);
 
   // Refetch when parent indicates lists changed
   useEffect(() => {
@@ -50,6 +45,9 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
       setIsLoading(true);
       const lists = await savedListsApi.getAllSavedLists();
       setSavedLists(lists);
+      if (onListsLoaded) {
+        onListsLoaded(Array.isArray(lists) ? lists.length : 0);
+      }
       setError(null);
     } catch (err) {
       console.error('Failed to fetch saved lists:', err);
@@ -92,7 +90,11 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
       console.log('Delete result:', result);
       
       // Update the UI
-      setSavedLists(savedLists.filter(list => list._id !== id));
+      const updated = savedLists.filter(list => list._id !== id);
+      setSavedLists(updated);
+      if (onListsLoaded) {
+        onListsLoaded(updated.length);
+      }
 
       // If the deleted list is the current active list, clear items in parent and reset current list
       if (currentList && currentList.id === id) {

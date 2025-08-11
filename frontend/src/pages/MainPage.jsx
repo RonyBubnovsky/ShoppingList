@@ -19,7 +19,6 @@ function MainPage() {
   const [savedListsVersion, setSavedListsVersion] = useState(0);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [hasSavedLists, setHasSavedLists] = useState(false);
-  const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const navigate = useNavigate();
 
   // Load items from database
@@ -56,8 +55,6 @@ function MainPage() {
     const handleFocus = () => {
       console.log('MainPage: Window focused, refreshing items and saved lists');
       loadItems();
-      // Also refresh saved lists existence
-      fetchSavedLists();
     };
 
     window.addEventListener('focus', handleFocus);
@@ -67,24 +64,10 @@ function MainPage() {
     };
   }, [loadItems]);
 
-  // Fetch saved lists existence (to adjust empty-state message)
-  const fetchSavedLists = useCallback(async () => {
-    setIsLoadingSavedLists(true);
-    try {
-      const lists = await savedListsApi.getAllSavedLists();
-      setHasSavedLists(Array.isArray(lists) && lists.length > 0);
-    } catch (err) {
-      console.error('Failed to load saved lists:', err);
-      setHasSavedLists(false);
-    } finally {
-      setIsLoadingSavedLists(false);
-    }
+  // Receive saved lists count from child component to avoid duplicate API calls
+  const handleSavedListsLoaded = useCallback((count) => {
+    setHasSavedLists(typeof count === 'number' ? count > 0 : false);
   }, []);
-
-  // Load saved lists on mount and whenever they might change
-  useEffect(() => {
-    fetchSavedLists();
-  }, [fetchSavedLists, savedListsVersion]);
 
   
 
@@ -397,8 +380,7 @@ function MainPage() {
   
   // Render list of items
   const renderItems = () => {
-    const isLoadingAny = isLoadingItems || isLoadingSavedLists;
-    if (isLoadingAny) {
+    if (isLoadingItems) {
       return (
         <div className="empty-list">
           <p>טוען את רשימת הקניות שלך...</p>
@@ -499,6 +481,7 @@ function MainPage() {
                 currentList={currentList}
                 onNewList={handleNewList}
                 refreshVersion={savedListsVersion}
+                onListsLoaded={handleSavedListsLoaded}
               />
               
               {items.length > 0 && (
