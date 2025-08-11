@@ -19,6 +19,7 @@ function MainPage() {
   const [savedListsVersion, setSavedListsVersion] = useState(0);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [hasSavedLists, setHasSavedLists] = useState(false);
+  const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const navigate = useNavigate();
 
   // Load items from database
@@ -55,6 +56,11 @@ function MainPage() {
   // Receive saved lists count from child component to avoid duplicate API calls
   const handleSavedListsLoaded = useCallback((count) => {
     setHasSavedLists(typeof count === 'number' ? count > 0 : false);
+  }, []);
+
+  // Receive loading state for saved lists from child
+  const handleSavedListsLoadingChange = useCallback((isLoading) => {
+    setIsLoadingSavedLists(!!isLoading);
   }, []);
 
   
@@ -368,7 +374,8 @@ function MainPage() {
   
   // Render list of items
   const renderItems = () => {
-    if (isLoadingItems) {
+    const isLoadingAny = isLoadingItems || isLoadingSavedLists;
+    if (isLoadingAny) {
       return (
         <div className="empty-list">
           <p>טוען את רשימת הקניות שלך...</p>
@@ -470,6 +477,7 @@ function MainPage() {
                 onNewList={handleNewList}
                 refreshVersion={savedListsVersion}
                 onListsLoaded={handleSavedListsLoaded}
+                onListsLoadingChange={handleSavedListsLoadingChange}
               />
               
               {items.length > 0 && (

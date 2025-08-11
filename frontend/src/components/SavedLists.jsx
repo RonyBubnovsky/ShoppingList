@@ -3,7 +3,7 @@ import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
 import { showNotification, NOTIFICATION_TYPES } from './Notification';
 
-function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion, onListsLoaded }) {
+function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion, onListsLoaded, onListsLoadingChange }) {
   const [savedLists, setSavedLists] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,6 +43,7 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
   const fetchSavedLists = async () => {
     try {
       setIsLoading(true);
+      if (onListsLoadingChange) onListsLoadingChange(true);
       const lists = await savedListsApi.getAllSavedLists();
       setSavedLists(lists);
       if (onListsLoaded) {
@@ -54,6 +55,7 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
       setError('טעינת הרשימות השמורות נכשלה');
     } finally {
       setIsLoading(false);
+      if (onListsLoadingChange) onListsLoadingChange(false);
     }
   };
 
