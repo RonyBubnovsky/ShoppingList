@@ -17,10 +17,14 @@ function MainPage() {
   const [error, setError] = useState(null);
   const [currentList, setCurrentList] = useState(null);
   const [savedListsVersion, setSavedListsVersion] = useState(0);
+  const [isLoadingItems, setIsLoadingItems] = useState(true);
+  const [hasSavedLists, setHasSavedLists] = useState(false);
+  const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const navigate = useNavigate();
 
   // Load items from database
   const loadItems = useCallback(async () => {
+    setIsLoadingItems(true);
     try {
       if (currentList) {
         // Load items for specific saved list
@@ -37,6 +41,8 @@ function MainPage() {
     } catch (err) {
       console.error('Failed to load items:', err);
       setItems([]);
+    } finally {
+      setIsLoadingItems(false);
     }
   }, [currentList]);
 
@@ -48,8 +54,10 @@ function MainPage() {
   // Refresh items when user returns to this page (e.g., from shopping page)
   useEffect(() => {
     const handleFocus = () => {
-      console.log('MainPage: Window focused, refreshing items to get latest purchase status');
+      console.log('MainPage: Window focused, refreshing items and saved lists');
       loadItems();
+      // Also refresh saved lists existence
+      fetchSavedLists();
     };
 
     window.addEventListener('focus', handleFocus);
@@ -58,6 +66,25 @@ function MainPage() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [loadItems]);
+
+  // Fetch saved lists existence (to adjust empty-state message)
+  const fetchSavedLists = useCallback(async () => {
+    setIsLoadingSavedLists(true);
+    try {
+      const lists = await savedListsApi.getAllSavedLists();
+      setHasSavedLists(Array.isArray(lists) && lists.length > 0);
+    } catch (err) {
+      console.error('Failed to load saved lists:', err);
+      setHasSavedLists(false);
+    } finally {
+      setIsLoadingSavedLists(false);
+    }
+  }, []);
+
+  // Load saved lists on mount and whenever they might change
+  useEffect(() => {
+    fetchSavedLists();
+  }, [fetchSavedLists, savedListsVersion]);
 
   
 
@@ -370,10 +397,23 @@ function MainPage() {
   
   // Render list of items
   const renderItems = () => {
+    const isLoadingAny = isLoadingItems || isLoadingSavedLists;
+    if (isLoadingAny) {
+      return (
+        <div className="empty-list">
+          <p>טוען את רשימת הקניות שלך...</p>
+        </div>
+      );
+    }
+
     if (items.length === 0) {
       return (
         <div className="empty-list">
-          <p>רשימת הקניות שלך ריקה. הוסף פריטים כדי להתחיל!</p>
+          <p>
+            {hasSavedLists
+              ? 'רשימת הקניות הנוכחית שלך ריקה, הוסף פריטים כדי להתחיל או טען אחת מהרשימות הקיימות'
+              : 'רשימת הקניות שלך ריקה. הוסף פריטים כדי להתחיל!'}
+          </p>
         </div>
       );
     }
