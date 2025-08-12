@@ -7,9 +7,18 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+});
+
+// Set Content-Type only for methods that send a body to avoid unnecessary preflight on GET
+api.interceptors.request.use((config) => {
+  const method = (config.method || 'get').toLowerCase();
+  if (method === 'post' || method === 'put' || method === 'patch' || method === 'delete') {
+    config.headers = {
+      ...(config.headers || {}),
+      'Content-Type': 'application/json',
+    };
+  }
+  return config;
 });
 
 // API methods for items
@@ -93,8 +102,15 @@ export const itemsApi = {
 export const savedListsApi = {
   // Get all saved lists
   getAllSavedLists: async () => {
-    const response = await api.get('/saved-lists');
-    return response.data;
+    try {
+      const response = await api.get('/saved-lists');
+      return response.data;
+    } catch (err) {
+      // Simple retry once after a short delay to handle backend cold start
+      await new Promise((r) => setTimeout(r, 400));
+      const response = await api.get('/saved-lists');
+      return response.data;
+    }
   },
   
   // Get stats about all saved lists (for UI)

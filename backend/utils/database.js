@@ -1,30 +1,55 @@
 const mongoose = require('mongoose');
 
-// Connect to MongoDB
+// Maintain a cached connection across serverless invocations
+let cached = global.mongooseConnectionCache;
+if (!cached) {
+  cached = global.mongooseConnectionCache = { conn: null, promise: null };
+}
+
+// Connect to MongoDB (resilient for serverless cold starts)
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    process.exit(1);
+  if (cached.conn) {
+    return cached.conn;
   }
+
+  if (!cached.promise) {
+    const mongoUri = process.env.MONGO_URI;
+    if (!mongoUri) {
+      console.error('MONGO_URI is not set');
+      return null;
+    }
+
+    cached.promise = mongoose
+      .connect(mongoUri)
+      .then((mongooseInstance) => {
+        console.log(`MongoDB Connected: ${mongooseInstance.connection.host}`);
+        return mongooseInstance;
+      })
+      .catch((error) => {
+        // Reset promise so future calls can retry
+        cached.promise = null;
+        console.error(`Error connecting to MongoDB: ${error.message}`);
+        return null;
+      });
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
 };
 
-// Handle graceful shutdown
+// Handle graceful shutdown (only meaningful in long-lived processes)
 const gracefulShutdown = async () => {
   try {
-    await mongoose.connection.close();
-    console.log('MongoDB connection closed.');
-    process.exit(0);
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.connection.close();
+      console.log('MongoDB connection closed.');
+    }
   } catch (e) {
     console.error('Error during graceful shutdown:', e);
-    process.exit(1);
   }
 };
 
 module.exports = {
   connectDB,
-  gracefulShutdown
+  gracefulShutdown,
 };
