@@ -129,10 +129,6 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
   // Toggle dropdown
   const toggleDropdown = () => {
     setShowDropdown(prev => !prev);
-    if (!showDropdown) {
-      // Refresh lists when opening the dropdown
-      fetchSavedLists();
-    }
   };
 
   return (
