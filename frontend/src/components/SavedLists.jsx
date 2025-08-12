@@ -3,7 +3,7 @@ import { FaSave, FaTrash, FaPlus, FaCheck } from 'react-icons/fa';
 import { savedListsApi } from '../services/api';
 import { showNotification, NOTIFICATION_TYPES } from './Notification';
 
-function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, refreshVersion, onListsLoaded, onListsLoadingChange }) {
+function SavedLists({ onListApplied, currentList: propCurrentList, refreshVersion, onListsLoaded, onListsLoadingChange }) {
   const [savedLists, setSavedLists] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -156,16 +156,6 @@ function SavedLists({ onListApplied, currentList: propCurrentList, onNewList, re
         <div className="dropdown-menu">
           <div className="dropdown-header">
             <h4>רשימות שמורות</h4>
-            <button 
-              className="btn new-list-btn" 
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowDropdown(false);
-                if (onNewList) onNewList();
-              }}
-            >
-              <FaPlus /> רשימה חדשה
-            </button>
           </div>
           
           {error && <div className="dropdown-error">{error}</div>}

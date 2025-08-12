@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaSave, FaTrash, FaCheck, FaWhatsapp, FaUndo, FaPlus } from 'react-icons/fa';
+import { FaSave, FaTrash, FaCheck, FaWhatsapp, FaUndo } from 'react-icons/fa';
 import Header from '../components/Header';
 import AddItemForm from '../components/AddItemForm';
 import SavedLists from '../components/SavedLists';
@@ -474,7 +474,6 @@ function MainPage() {
               <SavedLists 
                 onListApplied={handleSavedListApplied} 
                 currentList={currentList}
-                onNewList={handleNewList}
                 refreshVersion={savedListsVersion}
                 onListsLoaded={handleSavedListsLoaded}
                 onListsLoadingChange={handleSavedListsLoadingChange}
@@ -488,14 +487,8 @@ function MainPage() {
                       : 'בחר הכל'
                     }
                   </button>
-                  {currentList ? (
-                    <button 
-                      className="btn save-list-btn" 
-                      onClick={handleNewList}
-                    >
-                      <FaPlus /> רשימה חדשה
-                    </button>
-                  ) : (
+                  {
+                    (
                     <button 
                       className="btn save-list-btn" 
                       onClick={handleShowSaveModal}
