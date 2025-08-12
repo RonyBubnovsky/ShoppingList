@@ -15,8 +15,16 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
+const rawOrigins = process.env.FRONTEND_URL || '';
+const envOrigins = rawOrigins
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const allowedOrigins = [
-  process.env.FRONTEND_URL
+  // sensible defaults for local and production
+  'http://localhost:5173',
+  'https://reshimatkniot.vercel.app',
+  ...envOrigins,
 ];
 
 const corsOptions = {
@@ -33,6 +41,18 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
+
+// Ensure DB is connected before handling requests (skip for health and preflight)
+app.use(async (req, res, next) => {
+  if (req.method === 'OPTIONS') return next();
+  if (req.path === '/api/health') return next();
+
+  const conn = await connectDB();
+  if (!conn) {
+    return res.status(503).json({ error: 'Database not connected' });
+  }
+  return next();
+});
 
 // Routes
 app.use('/api/items', itemRoutes);
