@@ -336,6 +336,13 @@ function MainPage() {
     }
   };
 
+  // Return to main list (items with listContext=null)
+  const handleBackToMainList = () => {
+    // Clear current list context and selection; use effect will reload items
+    setCurrentList(null);
+    setSelectedItems([]);
+  };
+
   // Render bulk actions section if items are selected
   const renderBulkActions = () => {
     if (selectedItems.length === 0) return null;
@@ -471,6 +478,15 @@ function MainPage() {
           <div className="items-header">
             <h2>פריטים ברשימה</h2>
             <div className="header-actions">
+              {currentList && (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleBackToMainList}
+                  title="חזור לרשימה הראשית"
+                >
+                  <FaUndo /> חזרה
+                </button>
+              )}
               <SavedLists 
                 onListApplied={handleSavedListApplied} 
                 currentList={currentList}
