@@ -486,7 +486,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
               <FaShoppingBasket size={40} />
               <p>כל הפריטים נקנו.</p>
               {hideOnPurchase && selectedList && allListItems.length > 0 && (
-                <button className="btn btn-primary" onClick={handleResetAllToUnpurchased}>
+                <button className="reset-all-btn" onClick={handleResetAllToUnpurchased}>
                   <FaUndo /> אפס פריטים לרשימה
                 </button>
               )}
