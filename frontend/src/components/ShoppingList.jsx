@@ -28,6 +28,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
     categoryFilter: ''
   });
   const [unassignedItemsCount, setUnassignedItemsCount] = useState(0);
+  const [isResettingItems, setIsResettingItems] = useState(false);
 
   // Load saved lists when component mounts
   useEffect(() => {
@@ -253,6 +254,7 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
   // Reset all items in the selected list to unpurchased
   const handleResetAllToUnpurchased = async () => {
     try {
+      setIsResettingItems(true);
       const ids = (allListItems || []).map(item => item._id);
       if (!ids.length) return;
       await itemsApi.updateMultipleItems(ids, false);
@@ -265,6 +267,8 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
       console.error('Failed to reset items:', err);
       setError('איפוס הפריטים נכשל. נא לנסות שוב.');
       showNotification('איפוס הפריטים נכשל', NOTIFICATION_TYPES.ERROR);
+    } finally {
+      setIsResettingItems(false);
     }
   };
 
@@ -486,9 +490,13 @@ function ShoppingList({ hideOnPurchase = false, showDeleteButton = true, showMar
               <FaShoppingBasket size={40} />
               <p>כל הפריטים נקנו.</p>
               {hideOnPurchase && selectedList && allListItems.length > 0 && (
-                <button className="reset-all-btn" onClick={handleResetAllToUnpurchased}>
-                  <FaUndo /> אפס פריטים לרשימה
-                </button>
+                              <button 
+                className="reset-all-btn" 
+                onClick={handleResetAllToUnpurchased}
+                disabled={isResettingItems}
+              >
+                {!isResettingItems && <FaUndo />} {isResettingItems ? 'מאפס...' : 'אפס פריטים לרשימה'}
+              </button>
               )}
             </div>
           ) : filteredItems.length === 0 ? (

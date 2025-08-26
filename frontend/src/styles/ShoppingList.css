@@ -251,12 +251,6 @@
   box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
 }
 
-.empty-list .reset-all-btn:hover {
-  background-color: var(--primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
-}
-
 .empty-list .reset-all-btn:active {
   transform: translateY(0);
   box-shadow: 0 1px 3px rgba(76, 175, 80, 0.3);
