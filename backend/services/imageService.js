@@ -136,33 +136,50 @@ async function translateToEnglish(hebrewText) {
     return hebrewText;
   }
   
-  try {
-    console.log(`Translating "${hebrewText}" to English`);
-    
-    // Select model for translation - using the fastest model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    
-    // Use a simple prompt for translation
-    const translationPrompt = `Translate this product name from Hebrew to English. Respond with only the English translation, nothing else.
+  // Use a simple prompt for translation
+  const translationPrompt = `Translate this product name from Hebrew to English. Respond with only the English translation, nothing else.
     
 Hebrew: "${hebrewText}"
 English:`;
+  
+  // Try with the lighter model first
+  try {
+    console.log(`[Translation] Attempting to translate "${hebrewText}" using gemini-2.5-flash-lite`);
     
-    // Send translation request
-    const result = await model.generateContent(translationPrompt);
+    const liteModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    const result = await liteModel.generateContent(translationPrompt);
     const response = await result.response;
     let translatedText = response.text().trim();
     
     // Clean result from extra characters and quotes
     translatedText = translatedText.replace(/^['"`]|['"`]$/g, '');
     
-    console.log(`Translated "${hebrewText}" to "${translatedText}"`);
+    console.log(`[Translation] ✓ Successfully translated "${hebrewText}" to "${translatedText}" using gemini-2.5-flash-lite`);
     return translatedText;
     
-  } catch (error) {
-    console.error(`Translation error: ${error.message}`);
-    // In case of error, return the original text
-    return hebrewText;
+  } catch (liteError) {
+    console.warn(`[Translation] ✗ gemini-2.5-flash-lite failed: ${liteError.message}`);
+    console.log(`[Translation] Attempting fallback to gemini-2.5-flash`);
+    
+    // Fallback to the full model
+    try {
+      const fullModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await fullModel.generateContent(translationPrompt);
+      const response = await result.response;
+      let translatedText = response.text().trim();
+      
+      // Clean result from extra characters and quotes
+      translatedText = translatedText.replace(/^['"`]|['"`]$/g, '');
+      
+      console.log(`[Translation] ✓ Successfully translated "${hebrewText}" to "${translatedText}" using gemini-2.5-flash (fallback)`);
+      return translatedText;
+      
+    } catch (fullError) {
+      console.error(`[Translation] ✗ Both models failed. gemini-2.5-flash error: ${fullError.message}`);
+      console.log(`[Translation] Returning original text: "${hebrewText}"`);
+      // In case of error, return the original text
+      return hebrewText;
+    }
   }
 }
 
