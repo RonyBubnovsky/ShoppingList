@@ -12,6 +12,7 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Models to try in order (fallback sequence)
 const MODEL_OPTIONS = [
+  "gemini-3-flash-preview",
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash",

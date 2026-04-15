@@ -6,6 +6,8 @@ require('dotenv').config();
 const itemRoutes = require('./routes/itemRoutes');
 const parseRoutes = require('./routes/parseRoutes');
 const savedListRoutes = require('./routes/savedListRoutes');
+const authRoutes = require('./routes/authRoutes');
+const authMiddleware = require('./middleware/auth');
 const { connectDB, gracefulShutdown } = require('./utils/database');
 
 // Connect to the database
@@ -54,15 +56,14 @@ app.use(async (req, res, next) => {
   return next();
 });
 
-// Routes
-app.use('/api/items', itemRoutes);
-app.use('/api/parse', parseRoutes);
-app.use('/api/saved-lists', savedListRoutes);
+// Public routes (no auth required)
+app.use('/api/auth', authRoutes);
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
-// Health check route
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+// Protected routes — require valid JWT
+app.use('/api/items', authMiddleware, itemRoutes);
+app.use('/api/parse', authMiddleware, parseRoutes);
+app.use('/api/saved-lists', authMiddleware, savedListRoutes);
 
 
 // Local development server only

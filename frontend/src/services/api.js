@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { CATEGORIES } from '../constants/categories';
+import { authService } from './auth';
 
 // Base API URL from environment variables
 const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -9,7 +10,7 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// Set Content-Type only for methods that send a body to avoid unnecessary preflight on GET
+// Attach Content-Type for body methods + always attach Authorization token
 api.interceptors.request.use((config) => {
   const method = (config.method || 'get').toLowerCase();
   if (method === 'post' || method === 'put' || method === 'patch' || method === 'delete') {
@@ -18,8 +19,18 @@ api.interceptors.request.use((config) => {
       'Content-Type': 'application/json',
     };
   }
+
+  const token = authService.getToken();
+  if (token) {
+    config.headers = {
+      ...(config.headers || {}),
+      Authorization: `Bearer ${token}`,
+    };
+  }
+
   return config;
 });
+
 
 // API methods for items
 export const itemsApi = {
