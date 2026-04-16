@@ -31,6 +31,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Auto logout on 401 (Invalid token)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      authService.logout();
+      window.location.href = '/'; // Kick to login
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 // API methods for items
 export const itemsApi = {
