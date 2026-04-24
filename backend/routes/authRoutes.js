@@ -22,7 +22,7 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const token = jwt.sign({ phone }, process.env.JWT_SECRET, { expiresIn: '10s' });
+  const token = jwt.sign({ phone }, process.env.JWT_SECRET, { expiresIn: '30d' });
   return res.json({ token });
 });
 
