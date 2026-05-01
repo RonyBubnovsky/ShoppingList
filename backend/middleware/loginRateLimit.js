@@ -3,9 +3,7 @@ const LoginRateLimit = require('../models/LoginRateLimit');
 const WINDOW_MS = Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
 const BLOCK_MS = Number(process.env.LOGIN_RATE_LIMIT_BLOCK_MS || 30 * 60 * 1000);
 const CLEANUP_GRACE_MS = Number(process.env.LOGIN_RATE_LIMIT_CLEANUP_GRACE_MS || 5 * 60 * 1000);
-const IP_MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_IP_MAX_ATTEMPTS || 30);
-const PHONE_MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_PHONE_MAX_ATTEMPTS || 7);
-const IP_PHONE_MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_IP_PHONE_MAX_ATTEMPTS || 5);
+const MAX_ATTEMPTS = Number(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS || 6);
 
 const getClientIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -15,36 +13,16 @@ const getClientIp = (req) => {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 };
 
-const normalizePhone = (value) => String(value || '').trim();
-
 const buildLimiterBuckets = (req) => {
   const ip = getClientIp(req);
-  const phone = normalizePhone(req.body && req.body.phone);
 
-  const buckets = [
+  return [
     {
       name: 'ip',
       key: `login:ip:${ip}`,
-      maxAttempts: IP_MAX_ATTEMPTS,
+      maxAttempts: MAX_ATTEMPTS,
     },
   ];
-
-  if (phone) {
-    buckets.push(
-      {
-        name: 'phone',
-        key: `login:phone:${phone}`,
-        maxAttempts: PHONE_MAX_ATTEMPTS,
-      },
-      {
-        name: 'ip_phone',
-        key: `login:ip_phone:${ip}:${phone}`,
-        maxAttempts: IP_PHONE_MAX_ATTEMPTS,
-      }
-    );
-  }
-
-  return buckets;
 };
 
 const computeExpiry = (now) => {
