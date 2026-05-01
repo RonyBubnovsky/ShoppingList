@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { ensureCsrfToken, rotateCsrfToken } = require('../middleware/csrf');
+const { loginRateLimitMiddleware, clearLoginRateLimit } = require('../middleware/loginRateLimit');
 
 // Allowlist loaded once at startup from ENV
 const ALLOWED_PHONES = [
@@ -17,12 +18,15 @@ const ALLOWED_PHONES = [
  * Body: { phone: "050..." }
  * Returns: { token }  (JWT, 7-day expiry)
  */
-router.post('/login', (req, res) => {
+router.post('/login', loginRateLimitMiddleware, async (req, res) => {
   const { phone } = req.body;
 
   if (!phone || !ALLOWED_PHONES.includes(String(phone).trim())) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+
+  // Successful authentication clears accumulated failed-attempt state for this IP.
+  await clearLoginRateLimit(req);
 
   // Create JWT (same expiry as before)
   const token = jwt.sign({ phone }, process.env.JWT_SECRET, { expiresIn: '30d' });

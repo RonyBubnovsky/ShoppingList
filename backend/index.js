@@ -17,6 +17,8 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+// Trust upstream proxy headers (required on Vercel for correct client IP extraction).
+app.set('trust proxy', true);
 const CORS_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
 const CORS_HEADERS = 'Content-Type,Authorization,X-CSRF-Token';
 

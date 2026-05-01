@@ -36,7 +36,23 @@ export const authService = {
       body: JSON.stringify({ phone }),
     });
 
-    if (!res.ok) throw new Error('Unauthorized');
+    if (!res.ok) {
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+
+      if (res.status === 429) {
+        const rateLimitError = new Error('Too many login attempts');
+        rateLimitError.code = 'RATE_LIMITED';
+        rateLimitError.retryAfterSeconds = Number(payload && payload.retryAfterSeconds) || null;
+        throw rateLimitError;
+      }
+
+      throw new Error('Unauthorized');
+    }
 
     // Token is stored in an httpOnly cookie; request current user payload.
     const userRes = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });

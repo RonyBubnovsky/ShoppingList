@@ -258,6 +258,11 @@ input, select, textarea, button {
   font-size: 0.9rem;
 }
 
+.login-warning {
+  color: var(--warning-color);
+  font-weight: 600;
+}
+
 /* ── Auth Loading Screen ── */
 .auth-loading-container {
   min-height: 100vh;
