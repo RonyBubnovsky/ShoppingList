@@ -8,6 +8,8 @@ const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 // Create axios instance with default configuration
 const api = axios.create({
   baseURL: API_URL,
+  // Ensure browsers send cookies for httpOnly auth token
+  withCredentials: true,
 });
 
 // Attach Content-Type for body methods + always attach Authorization token
@@ -20,13 +22,8 @@ api.interceptors.request.use((config) => {
     };
   }
 
-  const token = authService.getToken();
-  if (token) {
-    config.headers = {
-      ...(config.headers || {}),
-      Authorization: `Bearer ${token}`,
-    };
-  }
+  // Cookies (httpOnly) are sent automatically due to `withCredentials`.
+  // We no longer attach Authorization headers from localStorage.
 
   return config;
 });
@@ -34,10 +31,16 @@ api.interceptors.request.use((config) => {
 // Auto logout on 401 (Invalid token)
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response && error.response.status === 401) {
-      authService.logout();
-      window.location.href = '/'; // Kick to login
+      try {
+        // Ensure server-side cookie is cleared and local cache is reset
+        await authService.logout();
+      } catch (e) {
+        // ignore logout errors
+      }
+      // Redirect to login (frontend router will show login page)
+      window.location.href = '/';
     }
     return Promise.reject(error);
   }

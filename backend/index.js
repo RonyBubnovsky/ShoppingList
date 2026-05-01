@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path'); // kept as in your original file
 require('dotenv').config();
 
@@ -36,13 +37,17 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'));
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  // Allow Authorization header and cookies for credentialed requests
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: false,
+  credentials: true, // required for httpOnly cookies to be sent by browser
 };
 
+// Enable CORS with credentials and parse cookies.
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
+// Parse cookies into `req.cookies` (used by auth middleware)
+app.use(cookieParser());
 
 // Ensure DB is connected before handling requests (skip for health and preflight)
 app.use(async (req, res, next) => {

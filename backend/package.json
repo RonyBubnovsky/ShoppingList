@@ -25,6 +25,7 @@
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
+    "cookie-parser": "^1.4.6",
     "mongoose": "^8.17.0"
   },
   "devDependencies": {
