@@ -82,11 +82,18 @@ export const authService = {
    * @returns {Promise<Record<string, any> | null>}
    */
   getCurrentUser: async () => {
-    const res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
+    let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
+    if (res.status === 401) {
+      // Try refresh once (rotate refresh token on backend)
+      await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
+    }
+
     if (!res.ok) {
       currentUser = null;
       return null;
     }
+
     const data = await res.json();
     currentUser = data.user || null;
     return currentUser;
