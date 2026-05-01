@@ -6,9 +6,20 @@ import { getCsrfToken } from './csrf';
  */
 let currentUser = null;
 
-// Prefer same-origin /api in production to keep auth cookies first-party.
-const API_URL = import.meta.env.VITE_API_BASE_URL
-  || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
+// Prefer same-origin `/api` to keep auth cookies first-party. When developing
+// with Vite we proxy `/api` to the backend (see `vite.config.js`).
+const API_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
+const refreshSession = async () => {
+  const csrfToken = getCsrfToken();
+  const res = await fetch(`${API_URL}/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+  });
+
+  return res.ok;
+};
 
 /**
  * authService now uses httpOnly cookies for authentication.
@@ -84,8 +95,12 @@ export const authService = {
   getCurrentUser: async () => {
     let res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
     if (res.status === 401) {
-      // Try refresh once (rotate refresh token on backend)
-      await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' });
+      // Try refresh once (rotate refresh token on backend). Include CSRF token header.
+      const refreshed = await refreshSession();
+      if (!refreshed) {
+        currentUser = null;
+        return null;
+      }
       res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
     }
 
@@ -98,6 +113,8 @@ export const authService = {
     currentUser = data.user || null;
     return currentUser;
   },
+
+  refreshSession,
 
   /**
    * Synchronous check whether we have a cached authenticated user.

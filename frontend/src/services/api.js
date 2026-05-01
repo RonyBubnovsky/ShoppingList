@@ -36,7 +36,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
+    const originalRequest = error.config;
+
+    if (error.response && error.response.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshed = await authService.refreshSession();
+        if (refreshed) {
+          return api(originalRequest);
+        }
+      } catch (e) {
+        // ignore refresh errors and fall through to logout
+      }
+
       try {
         // Ensure server-side cookie is cleared and local cache is reset
         await authService.logout();

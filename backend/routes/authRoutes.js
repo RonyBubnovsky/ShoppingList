@@ -31,6 +31,7 @@ router.post('/login', loginRateLimitMiddleware, async (req, res) => {
   await clearLoginRateLimit(req);
 
   const isProd = process.env.NODE_ENV === 'production';
+  const devSameSite = process.env.DEV_COOKIE_SAMESITE || null; // set to 'none' to force dev cookies to be SameSite=None
 
   // Create short-lived access token (JWT)
   const accessToken = jwt.sign({ phone }, process.env.JWT_SECRET, { expiresIn: process.env.ACCESS_TOKEN_EXPIRES || '20m' });
@@ -50,14 +51,14 @@ router.post('/login', loginRateLimitMiddleware, async (req, res) => {
   const accessCookieOpts = {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    sameSite: isProd ? 'none' : (devSameSite || 'lax'),
     maxAge: 20 * 60 * 1000, // 20 minutes
   };
 
   const refreshCookieOpts = {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    sameSite: isProd ? 'none' : (devSameSite || 'lax'),
     maxAge: refreshExpiresMs,
   };
 
@@ -105,6 +106,11 @@ router.post('/logout', async (req, res) => {
  */
 router.post('/refresh', async (req, res) => {
   try {
+    // Dev-only debug: log presence of cookies and raw Cookie header to diagnose
+    if (process.env.NODE_ENV !== 'production' && process.env.DEV_LOG_COOKIES === 'true') {
+      console.log('[DEBUG] /auth/refresh called. req.cookies keys:', Object.keys(req.cookies || {}));
+      console.log('[DEBUG] /auth/refresh raw header cookie:', req.headers.cookie);
+    }
     const raw = req.cookies && req.cookies.refreshToken;
     if (!raw) return res.status(401).json({ error: 'Missing refresh token' });
 
