@@ -4,6 +4,10 @@
  */
 let currentUser = null;
 
+// Prefer same-origin /api in production to keep auth cookies first-party.
+const API_URL = import.meta.env.VITE_API_BASE_URL
+  || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
+
 /**
  * authService now uses httpOnly cookies for authentication.
  * - `login` performs a credentialed POST; the backend sets an httpOnly cookie.
@@ -23,7 +27,6 @@ export const authService = {
    * @returns {Promise<Record<string, any>>} resolved user payload
    */
   login: async (phone) => {
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -45,7 +48,6 @@ export const authService = {
    * Logout: call backend to clear cookie and remove cached user.
    */
   logout: async () => {
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
     currentUser = null;
   },
@@ -57,7 +59,6 @@ export const authService = {
    * @returns {Promise<Record<string, any> | null>}
    */
   getCurrentUser: async () => {
-    const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
     const res = await fetch(`${API_URL}/auth/me`, { credentials: 'include' });
     if (!res.ok) {
       currentUser = null;
