@@ -9,6 +9,7 @@ const parseRoutes = require('./routes/parseRoutes');
 const savedListRoutes = require('./routes/savedListRoutes');
 const authRoutes = require('./routes/authRoutes');
 const authMiddleware = require('./middleware/auth');
+const { csrfProtection } = require('./middleware/csrf');
 const { connectDB, gracefulShutdown } = require('./utils/database');
 
 // Connect to the database
@@ -17,7 +18,7 @@ connectDB();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const CORS_METHODS = 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const CORS_HEADERS = 'Content-Type,Authorization';
+const CORS_HEADERS = 'Content-Type,Authorization,X-CSRF-Token';
 
 // Normalize origins to avoid mismatches from trailing slashes in env values.
 const normalizeOrigin = (value) => String(value || '').trim().replace(/\/$/, '');
@@ -44,7 +45,7 @@ const corsOptions = {
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   // Allow Authorization header and cookies for credentialed requests
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
   credentials: true, // required for httpOnly cookies to be sent by browser
 };
 
@@ -85,6 +86,8 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 // Parse cookies into `req.cookies` (used by auth middleware)
 app.use(cookieParser());
+// Enforce CSRF protection for all state-changing API requests.
+app.use(csrfProtection);
 
 // Ensure DB is connected before handling requests (skip for health and preflight)
 app.use(async (req, res, next) => {

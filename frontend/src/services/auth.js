@@ -1,3 +1,5 @@
+import { getCsrfToken } from './csrf';
+
 /**
  * Authentication helpers for logging in, storing the JWT, and checking whether
  * the saved token can still be used before protected screens render.
@@ -48,7 +50,12 @@ export const authService = {
    * Logout: call backend to clear cookie and remove cached user.
    */
   logout: async () => {
-    await fetch(`${API_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+    const csrfToken = getCsrfToken();
+    await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
+    });
     currentUser = null;
   },
 

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { CATEGORIES } from '../constants/categories';
 import { authService } from './auth';
+import { getCsrfToken } from './csrf';
 
 // Base API URL from environment variables
 const API_URL = import.meta.env.VITE_API_BASE_URL
@@ -17,9 +18,11 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const method = (config.method || 'get').toLowerCase();
   if (method === 'post' || method === 'put' || method === 'patch' || method === 'delete') {
+    const csrfToken = getCsrfToken();
     config.headers = {
       ...(config.headers || {}),
       'Content-Type': 'application/json',
+      ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
     };
   }
 

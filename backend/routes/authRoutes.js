@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
+const { ensureCsrfToken, rotateCsrfToken } = require('../middleware/csrf');
 
 // Allowlist loaded once at startup from ENV
 const ALLOWED_PHONES = [
@@ -44,6 +45,8 @@ router.post('/login', (req, res) => {
 
   // Send cookie and minimal JSON body. Frontend should use fetch(..., { credentials: 'include' }).
   res.cookie('token', token, cookieOptions);
+  // Rotate CSRF token at login boundary to bind state-changing requests.
+  rotateCsrfToken(res);
   return res.json({ success: true });
 });
 
@@ -69,6 +72,8 @@ router.post('/logout', (req, res) => {
  * to detect whether an httpOnly cookie session exists.
  */
 router.get('/me', authMiddleware, (req, res) => {
+  // Ensure CSRF token cookie exists for authenticated browser sessions.
+  ensureCsrfToken(req, res);
   return res.json({ user: req.user });
 });
 
