@@ -6,11 +6,15 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 const getCsrfCookieOptions = () => {
   const isProd = process.env.NODE_ENV === 'production';
+  // Must be persistent (not a session cookie) so it survives browser close.
+  // Match the refresh token lifetime so CSRF is always available for silent re-auth.
+  const maxAge = Number(process.env.REFRESH_TOKEN_MAX_AGE_MS || 30 * 24 * 60 * 60 * 1000);
   return {
     httpOnly: false,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
     path: '/',
+    maxAge,
   };
 };
 
